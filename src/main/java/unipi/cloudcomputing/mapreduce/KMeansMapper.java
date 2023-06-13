@@ -34,19 +34,21 @@ public class KMeansMapper extends Mapper<LongWritable, Text, IntWritable, Point>
 
     @Override
     protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-        String[] centroid_comps_str = value.toString().split(",");
-        double[] centroid_comps = new double[centroid_comps_str.length];
+        // Load centroid's data from strings
+        String[] datum_comps_str = value.toString().split(",");
+        double[] datum_comps = new double[datum_comps_str.length];
 
-        for(int j = 0; j < centroid_comps.length; j++)
-            centroid_comps[j] = Double.parseDouble(centroid_comps_str[j]);
+        for(int j = 0; j < datum_comps.length; j++)
+            datum_comps[j] = Double.parseDouble(datum_comps_str[j]);
 
-        Point point = new Point(centroid_comps);
+        Point datum = new Point(datum_comps);
 
         double minDist = Double.POSITIVE_INFINITY;
         int closestCentroid = -1;
 
+        // Find closest centroid to datum
         for(int i = 0; i < centroids.length; i++) {
-            double distance = Point.distance(centroids[i], point, p);
+            double distance = Point.distance(centroids[i], datum, p);
 
             if(distance >= minDist)
                 continue;
@@ -55,8 +57,9 @@ public class KMeansMapper extends Mapper<LongWritable, Text, IntWritable, Point>
             minDist = distance;
         }
 
+        // Output closest centroid
         IntWritable t = new IntWritable();
         t.set(closestCentroid);
-        context.write(t, point);
+        context.write(t, datum);
     }
 }

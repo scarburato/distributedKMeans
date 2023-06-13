@@ -7,9 +7,19 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
+import unipi.cloudcomputing.geometry.AverageBuilder;
 import unipi.cloudcomputing.geometry.Point;
+import unipi.cloudcomputing.mapreduce.KMeansCombiner;
+import unipi.cloudcomputing.mapreduce.KMeansMapper;
+import unipi.cloudcomputing.mapreduce.KMeansReducer;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -19,7 +29,7 @@ import java.util.Random;
 
 
 public class KMeansMapReduce {
-    private static boolean stopCriterion(Point[] oldC, Point[] newC, int normT, float threshold) {
+    private static boolean stopCriterion(Point[] oldC, Point[] newC, int normT, double threshold) {
         for(int i = 0; i < oldC.length; i++)
             if(Point.distance(oldC[i],newC[i], normT) > threshold)
                 return false;
@@ -104,7 +114,7 @@ public class KMeansMapReduce {
         hdfs.close();
     }
 
-    public static void main( String[] args ) throws IOException {
+    public static void main( String[] args ) throws IOException, InterruptedException, ClassNotFoundException {
         Configuration conf = new Configuration();
         final String[] genericArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 
@@ -116,9 +126,56 @@ public class KMeansMapReduce {
         final double THRESHOLD = 0.0001;
         final int MAX_ITERATIONS = 30;
 
-        Point[] newCentroids = new Point[K];
-        Point[] oldCentroids = new Point[K];
+        int iterations = 0;
 
+        Point[] newCentroids = centroidsInit(conf, INPUT, K, DATASET_SIZE);
+        Point[] oldCentroids;
 
+        do {
+            iterations ++;
+            Job job = Job.getInstance(conf, "iteration_" + iterations);
+
+            // Set adapters
+            job.setJarByClass(KMeansMapReduce.class);
+            job.setMapperClass(KMeansMapper.class);
+            job.setCombinerClass(KMeansCombiner.class);
+            job.setReducerClass(KMeansReducer.class);
+
+            job.setNumReduceTasks(K);
+
+            // Set input 'n output 'n stuff
+            FileInputFormat.addInputPath(job, new Path(INPUT));
+            FileOutputFormat.setOutputPath(job, new Path(OUTPUT));
+
+            job.setOutputKeyClass(IntWritable.class);
+            job.setOutputValueClass(AverageBuilder.class);
+            job.setMapOutputValueClass(Point.class);
+
+            job.setInputFormatClass(TextInputFormat.class);
+            job.setOutputValueClass(TextOutputFormat.class);
+
+            // Boot-up the job!
+            boolean success = job.waitForCompletion(true);
+            if(!success) {
+                System.err.println(job.getJobName() + " has failed");
+                System.exit(0xff);
+            }
+
+            // new centroids incoming!
+            oldCentroids = newCentroids;
+            newCentroids = readCentroids(conf, K, OUTPUT);
+
+            // Save new centroids in conf
+            for(int i = 0; i < K; i++) {
+                conf.unset("centroid-" + i);
+                conf.set("centroid-" + i, newCentroids[i].toString());
+            }
+
+        } while (iterations <= MAX_ITERATIONS && !stopCriterion(oldCentroids, newCentroids, DISTANCE, THRESHOLD));
+
+        // Clean-it-up
+        finalize(conf, newCentroids, genericArgs[1]);
+
+        System.out.println("Ò fatto iterazioni in numero " + iterations);
     }
 }
