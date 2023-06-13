@@ -2,15 +2,16 @@ package unipi.cloudcomputing;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import unipi.cloudcomputing.geometry.Point;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -63,6 +64,44 @@ public class KMeansMapReduce {
         br.close();
 
         return points;
+    }
+
+    private static Point[] readCentroids(Configuration conf, int k, String pathString)
+            throws IOException, FileNotFoundException {
+        Point[] points = new Point[k];
+        FileSystem hdfs = FileSystem.get(conf);
+        FileStatus[] status = hdfs.listStatus(new Path(pathString));
+
+        for (FileStatus fileStatus : status) {
+            //Read the centroids from the hdfs
+            if (!fileStatus.getPath().toString().endsWith("_SUCCESS")) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(hdfs.open(fileStatus.getPath())));
+                String[] keyValueSplit = br.readLine().split("\t"); //Split line in K,V
+                int centroidId = Integer.parseInt(keyValueSplit[0]);
+                String[] point = keyValueSplit[1].split(",");
+                points[centroidId] = Point.fromString(point);
+                br.close();
+            }
+        }
+        //Delete temp directory
+        hdfs.delete(new Path(pathString), true);
+
+        return points;
+    }
+
+    private static void finalize(Configuration conf, Point[] centroids, String output) throws IOException {
+        FileSystem hdfs = FileSystem.get(conf);
+        FSDataOutputStream dos = hdfs.create(new Path(output + "/centroids.txt"), true);
+        BufferedWriter br = new BufferedWriter(new OutputStreamWriter(dos));
+
+        //Write the result in a unique file
+        for (Point centroid : centroids) {
+            br.write(centroid.toString());
+            br.newLine();
+        }
+
+        br.close();
+        hdfs.close();
     }
 
     public static void main( String[] args ) throws IOException {
