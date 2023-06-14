@@ -8,7 +8,7 @@ import java.util.Random;
 
 /**
  * This mapper is used to sample random points from the dataset. It'll be used
- * in k-means to drawn the k random centroinds in the setup step
+ * in k-means to draw the k random centroinds in the setup step
  */
 public class RandomPickMapper extends org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, LongWritable, Text>{
     private Random randomGenerator;
