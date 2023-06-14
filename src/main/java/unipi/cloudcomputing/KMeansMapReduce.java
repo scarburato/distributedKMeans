@@ -1,12 +1,16 @@
 package unipi.cloudcomputing;
 
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
@@ -118,19 +122,42 @@ public class KMeansMapReduce {
         Configuration conf = new Configuration();
         final String[] genericArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
 
-        final String INPUT = genericArgs[0];
-        final String OUTPUT = genericArgs[1] + "/tmp";
-        final int DATASET_SIZE = 10; // @TODO XML
-        final int DISTANCE = 2;
-        final int K = 3;
-        final double THRESHOLD = 0.0001;
-        final int MAX_ITERATIONS = 30;
+        // cmd options parser
+        final HelpFormatter formatter = new HelpFormatter();
+        final CommandLineParser parser = new GnuParser();
+        final CommandLine cmd;
+        final KMeansOptions options = new KMeansOptions();
+        try {
+            cmd = parser.parse(options, args);
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
+            formatter.printHelp("", options);
+            System.exit(1);
+            return;
+        }
+
+        final String INPUT = cmd.getOptionValue("input");
+        final String OUTPUT = cmd.getOptionValue("output") + "/tmp";
+        final int DATASET_SIZE = Integer.parseInt(cmd.getOptionValue("dimensionality"));
+        final int DISTANCE = Integer.parseInt(
+                cmd.getOptionValue("norm") != null ?
+                        cmd.getOptionValue("norm") : "10");
+        final int K = Integer.parseInt(
+                cmd.getOptionValue("clusters") != null ?
+                        cmd.getOptionValue("clusters") : "3");
+        final double THRESHOLD = Double.parseDouble(
+                cmd.getOptionValue("threshold") != null ?
+                        cmd.getOptionValue("threshold") : "0.0001");
+        final int MAX_ITERATIONS = Integer.parseInt(
+                cmd.getOptionValue("maxiterations") != null ?
+                        cmd.getOptionValue("maxiterations") : "10");
 
         int iterations = 0;
 
         Point[] newCentroids = centroidsInit(conf, INPUT, K, DATASET_SIZE);
         Point[] oldCentroids;
 
+        long time_start = System.currentTimeMillis();
         do {
             iterations ++;
             Job job = Job.getInstance(conf, "iteration_" + iterations);
@@ -173,9 +200,12 @@ public class KMeansMapReduce {
 
         } while (iterations <= MAX_ITERATIONS && !stopCriterion(oldCentroids, newCentroids, DISTANCE, THRESHOLD));
 
+        long time_stop = System.currentTimeMillis();
+
         // Clean-it-up
         finalize(conf, newCentroids, genericArgs[1]);
 
         System.out.println("Ò fatto iterazioni in numero " + iterations);
+        System.out.println("Ò lavorato per millisecondi " + (time_stop-time_start));
     }
 }
