@@ -34,13 +34,15 @@ public class KMeansMapper extends Mapper<LongWritable, Text, IntWritable, Point>
 
     @Override
     protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-        // Load centroid's data from strings
+        // Load datum's coordinates from string (from file)
         String[] datum_comps_str = value.toString().split(",");
         double[] datum_comps = new double[datum_comps_str.length];
 
+        // Parse
         for(int j = 0; j < datum_comps.length; j++)
             datum_comps[j] = Double.parseDouble(datum_comps_str[j]);
 
+        // Create point
         Point datum = new Point(datum_comps);
 
         double minDist = Double.POSITIVE_INFINITY;
