@@ -1,7 +1,9 @@
 package unipi.cloudcomputing.randompick;
 
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.ShortWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
 
 import java.io.IOException;
 import java.util.Random;
@@ -10,14 +12,13 @@ import java.util.Random;
  * This mapper is used to sample random points from the dataset. It'll be used
  * in k-means to draw the k random centroinds in the setup step
  */
-public class RandomPickMapper extends org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, LongWritable, Text>{
+public class RandomPickMapper extends Mapper<LongWritable, Text, ShortWritable, Sample> {
+    private static final ShortWritable fakeId = new ShortWritable((short) 0);
     private Random randomGenerator;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-        //k = Integer.parseInt(context.getConfiguration().get("k"));
-        // @TODO pass seed as parameter
-        randomGenerator = new Random(0xcafebabeL);
+        randomGenerator = new Random(); // 0xcafebabeL
     }
 
     /**
@@ -25,6 +26,9 @@ public class RandomPickMapper extends org.apache.hadoop.mapreduce.Mapper<LongWri
      */
     @Override
     protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-        context.write(new LongWritable(randomGenerator.nextLong()), value);
+        Sample sample = new Sample();
+        sample.randomId = randomGenerator.nextLong();
+        sample.sample = value.toString();
+        context.write(fakeId, sample);
     }
 }

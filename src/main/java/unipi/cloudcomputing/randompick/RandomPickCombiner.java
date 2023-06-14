@@ -1,6 +1,7 @@
 package unipi.cloudcomputing.randompick;
 
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.ShortWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
@@ -9,39 +10,47 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class RandomPickCombiner extends Reducer<LongWritable, Text, LongWritable, Text> {
+public class RandomPickCombiner extends Reducer<ShortWritable, Sample, ShortWritable, Sample> {
     private int k;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-        k = Integer.parseInt(context.getConfiguration().get("k"));
+        k = context.getConfiguration().getInt("k", 0);
     }
 
     @Override
-    protected void reduce(LongWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-        SortedMap<Long, String> firstKSamples = new TreeMap<>();
-
-        values.forEach(text -> {
-            // We don't even try to insert if the key is too big as it would be
-            // removed at the next step otherwise.
-            if(key.get() > firstKSamples.lastKey())
-                return;
-
-            // Insert sample into data struct
-            // O(log n)
-            firstKSamples.put(key.get(), values.toString());
-
-            // If we have more than k samples, we then remove the bigger one
-            if(firstKSamples.size() > k)
-                // O(log n)
-                firstKSamples.remove(firstKSamples.lastKey());
-        });
+    protected void reduce(ShortWritable key, Iterable<Sample> values, Context context) throws IOException, InterruptedException {
+        SortedMap<Long, String> firstKSamples = sample(key, values, k);
 
         // Finally we emit the first k samples on this node
         for (Map.Entry<Long, String> entry : firstKSamples.entrySet()) {
-            Long randomKey = entry.getKey();
-            String sample = entry.getValue();
-            context.write(new LongWritable(randomKey), new Text(sample));
+            Sample sample = new Sample();
+            sample.sample = entry.getValue();
+            sample.randomId = entry.getKey();
+
+            context.write(key, sample);
         }
+    }
+
+    public static SortedMap<Long, String> sample(ShortWritable key, Iterable<Sample> values, int k) {
+        SortedMap<Long, String> firstKSamples = new TreeMap<>();
+
+        for (Sample sample : values) {
+            // We don't even try to insert if the key is too big as it would be
+            // removed at the next step otherwise.
+            if (firstKSamples.size() > k && sample.randomId > firstKSamples.lastKey())
+                continue;
+
+            // Insert sample into data struct
+            // O(log n)
+            firstKSamples.put(sample.randomId, sample.sample);
+
+            // If we have more than k samples, we then remove the bigger one
+            if (firstKSamples.size() > k)
+                // O(log n)
+                firstKSamples.remove(firstKSamples.lastKey());
+        }
+
+        return firstKSamples;
     }
 }
