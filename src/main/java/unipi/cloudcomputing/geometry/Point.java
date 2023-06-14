@@ -139,6 +139,10 @@ public class Point implements Writable {
         return new Point(centroid_comps);
     }
 
+    public static Point fromString(String str) {
+        return fromString(str.split(","));
+    }
+
     public static void main(String[] argv) {
         Point a = new Point(new double[]{1, 1});
         Point b = new Point(new double[]{2, 2});
