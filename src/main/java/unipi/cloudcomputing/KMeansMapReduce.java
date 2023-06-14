@@ -132,7 +132,7 @@ public class KMeansMapReduce {
             cmd = parser.parse(options, args);
         } catch (ParseException e) {
             System.out.println(e.getMessage());
-            formatter.printHelp("", options);
+            formatter.printHelp("-i INPUT -o OUTPUT -d DIMENSIONALITY [-t THRESHOLD]", options);
             System.exit(1);
             return;
         }

@@ -32,7 +32,7 @@ public class KMeansOptions extends Options {
         threshold.setRequired(false);
         addOption(threshold);
 
-        Option iterations = new Option("i", "maxiterations", true, "Maximum iterations");
+        Option iterations = new Option("I", "maxiterations", true, "Maximum iterations");
         iterations.setRequired(false);
         addOption(iterations);
     }
