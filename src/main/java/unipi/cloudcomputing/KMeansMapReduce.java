@@ -6,12 +6,13 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -24,12 +25,11 @@ import unipi.cloudcomputing.geometry.Point;
 import unipi.cloudcomputing.mapreduce.KMeansCombiner;
 import unipi.cloudcomputing.mapreduce.KMeansMapper;
 import unipi.cloudcomputing.mapreduce.KMeansReducer;
+import unipi.cloudcomputing.randompick.RandomPickCombiner;
+import unipi.cloudcomputing.randompick.RandomPickMapper;
+import unipi.cloudcomputing.randompick.RandomPickReducer;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
 
 
 public class KMeansMapReduce {
@@ -41,43 +41,44 @@ public class KMeansMapReduce {
         return true;
     }
 
-    private static Point[] centroidsInit(Configuration conf, String pathString, int k, int dataSetSize)
-            throws IOException {
-        Point[] points = new Point[k];
+    /**
+     * Starts a Hadoop job and randomly picks k points as centroids
+     */
+    private static Point[] centroidsInit(Configuration conf, String pathString, String outString, int k)
+            throws IOException, InterruptedException, ClassNotFoundException {
 
-        List<Integer> positions = new ArrayList<Integer>();
-        Random random = new Random();
-        int pos;
-        while(positions.size() < k) {
-            pos = random.nextInt(dataSetSize);
-            if(!positions.contains(pos)) {
-                positions.add(pos);
-            }
+        Job job = Job.getInstance(conf, "pick initial centroids");
+
+        // Set adapters
+        job.setJarByClass(KMeansMapReduce.class);
+        job.setMapperClass(RandomPickMapper.class);
+        job.setCombinerClass(RandomPickCombiner.class);
+        job.setReducerClass(RandomPickReducer.class);
+
+        // Just one reducer for this
+        job.setNumReduceTasks(1);
+
+        // Set input 'n output 'n stuff
+        FileInputFormat.addInputPath(job, new Path(pathString));
+        FileOutputFormat.setOutputPath(job, new Path(outString));
+
+        job.setOutputKeyClass(LongWritable.class);
+        job.setOutputValueClass(Text.class);
+
+        job.setInputFormatClass(TextInputFormat.class);
+        job.setOutputValueClass(TextOutputFormat.class);
+
+        // Boot-up the job!
+        boolean success = job.waitForCompletion(true);
+        if(!success) {
+            System.err.println(job.getJobName() + " has failed");
+            System.exit(0xee);
         }
-        Collections.sort(positions);
 
-        //File reading utils
-        Path path = new Path(pathString);
-        FileSystem hdfs = FileSystem.get(conf);
-        FSDataInputStream in = hdfs.open(path);
-        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+        // @TODO testing only
+        System.exit(0);
 
-        //Get centroids from the file
-        int row = 0;
-        int i = 0;
-        int position;
-        while(i < positions.size()) {
-            position = positions.get(i);
-            String point = br.readLine();
-            if(row == position) {
-                points[i] = Point.fromString(point.split(","));
-                i++;
-            }
-            row++;
-        }
-        br.close();
-
-        return points;
+        return readCentroids(conf, k, outString);
     }
 
     private static Point[] readCentroids(Configuration conf, int k, String pathString)
@@ -154,7 +155,7 @@ public class KMeansMapReduce {
 
         int iterations = 0;
 
-        Point[] newCentroids = centroidsInit(conf, INPUT, K, DATASET_SIZE);
+        Point[] newCentroids = centroidsInit(conf, INPUT, OUTPUT + "/centroids.init", K);
         Point[] oldCentroids;
 
         long time_start = System.currentTimeMillis();
