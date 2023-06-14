@@ -38,7 +38,7 @@ public class AverageBuilder implements Writable {
 
     public Point computeAverage() {
         Point avg = new Point(sum);
-        sum.scalarFactor(1d/(double) cardinality);
+        avg.scalarFactor(1d/(double) cardinality);
         return avg;
     }
 
