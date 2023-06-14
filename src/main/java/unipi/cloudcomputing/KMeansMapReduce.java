@@ -6,12 +6,10 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.ShortWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
@@ -25,11 +23,10 @@ import unipi.cloudcomputing.geometry.Point;
 import unipi.cloudcomputing.mapreduce.KMeansCombiner;
 import unipi.cloudcomputing.mapreduce.KMeansMapper;
 import unipi.cloudcomputing.mapreduce.KMeansReducer;
-import unipi.cloudcomputing.randompick.RandomPickCombiner;
-import unipi.cloudcomputing.randompick.RandomPickMapper;
-import unipi.cloudcomputing.randompick.RandomPickReducer;
+import unipi.cloudcomputing.randompick.*;
 
 import java.io.*;
+import java.util.Arrays;
 
 
 public class KMeansMapReduce {
@@ -44,29 +41,35 @@ public class KMeansMapReduce {
     /**
      * Starts a Hadoop job and randomly picks k points as centroids
      */
-    private static Point[] centroidsInit(Configuration conf, String pathString, String outString, int k)
+    private static Point[] centroidsInit(Configuration conf, FileSystem hdfs, String pathString, String outString, int k)
             throws IOException, InterruptedException, ClassNotFoundException {
 
-        Job job = Job.getInstance(conf, "pick initial centroids");
+        Job job = Job.getInstance(conf, "Pick initial centroids");
+        job.getConfiguration().setInt("k", k);
 
-        // Set adapters
         job.setJarByClass(KMeansMapReduce.class);
+
+        // set mapper/reducer
         job.setMapperClass(RandomPickMapper.class);
         job.setCombinerClass(RandomPickCombiner.class);
         job.setReducerClass(RandomPickReducer.class);
 
-        // Just one reducer for this
-        job.setNumReduceTasks(1);
+        // define mapper's output key-value
+        job.setMapOutputKeyClass(ShortWritable.class);
+        job.setMapOutputValueClass(Sample.class);
 
-        // Set input 'n output 'n stuff
-        FileInputFormat.addInputPath(job, new Path(pathString));
-        FileOutputFormat.setOutputPath(job, new Path(outString));
-
+        // define reducer's output key-value
         job.setOutputKeyClass(LongWritable.class);
         job.setOutputValueClass(Text.class);
 
+        // define I/O
+        FileInputFormat.addInputPath(job, new Path(pathString));
+        FileOutputFormat.setOutputPath(job, new Path(outString));
+
         job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputValueClass(TextOutputFormat.class);
+        job.setOutputFormatClass(TextOutputFormat.class);
+
+        job.setNumReduceTasks(1);
 
         // Boot-up the job!
         boolean success = job.waitForCompletion(true);
@@ -75,48 +78,38 @@ public class KMeansMapReduce {
             System.exit(0xee);
         }
 
-        // @TODO testing only
-        System.exit(0);
+        FileStatus[] nodes = hdfs.listStatus(new Path(outString), new GlobFilter("part-r-*"));
 
-        return readCentroids(conf, k, outString);
+        if(nodes.length == 0)
+            throw new RuntimeException("Unable to find initial centroids' files in " + outString);
+
+        return new BufferedReader(new InputStreamReader(hdfs.open(nodes[0].getPath())))
+                .lines()
+                .map(s -> s.split("\t")[1])
+                .map(Point::fromString)
+                .toArray(Point[]::new);
     }
 
+    /**
+     * Reads the centroids from file
+     */
     private static Point[] readCentroids(Configuration conf, int k, String pathString)
             throws IOException, FileNotFoundException {
-        Point[] points = new Point[k];
         FileSystem hdfs = FileSystem.get(conf);
-        FileStatus[] status = hdfs.listStatus(new Path(pathString));
+        FileStatus[] nodes = hdfs.listStatus(new Path(pathString), new GlobFilter("part-r-*"));
 
-        for (FileStatus fileStatus : status) {
-            //Read the centroids from the hdfs
-            if (!fileStatus.getPath().toString().endsWith("_SUCCESS")) {
-                BufferedReader br = new BufferedReader(new InputStreamReader(hdfs.open(fileStatus.getPath())));
-                String[] keyValueSplit = br.readLine().split("\t"); //Split line in K,V
-                int centroidId = Integer.parseInt(keyValueSplit[0]);
-                String[] point = keyValueSplit[1].split(",");
-                points[centroidId] = Point.fromString(point);
-                br.close();
-            }
-        }
-        //Delete temp directory
-        hdfs.delete(new Path(pathString), true);
+        if(nodes.length == 0)
+            throw new RuntimeException("Unable to find initial centroids' files in " + pathString);
 
-        return points;
-    }
+        Point[] centroids = new Point[k];
+        for(FileStatus node : nodes) {
+            BufferedReader br = new BufferedReader(new InputStreamReader(hdfs.open(node.getPath())));
+            String[] data = br.readLine().split("\t");
 
-    private static void finalize(Configuration conf, Point[] centroids, String output) throws IOException {
-        FileSystem hdfs = FileSystem.get(conf);
-        FSDataOutputStream dos = hdfs.create(new Path(output + "/centroids.txt"), true);
-        BufferedWriter br = new BufferedWriter(new OutputStreamWriter(dos));
-
-        //Write the result in a unique file
-        for (Point centroid : centroids) {
-            br.write(centroid.toString());
-            br.newLine();
+            centroids[Integer.parseInt(data[0])] = Point.fromString(data[1]);
         }
 
-        br.close();
-        hdfs.close();
+        return centroids;
     }
 
     public static void main( String[] args ) throws IOException, InterruptedException, ClassNotFoundException {
@@ -138,11 +131,11 @@ public class KMeansMapReduce {
         }
 
         final String INPUT = cmd.getOptionValue("input");
-        final String OUTPUT = cmd.getOptionValue("output") + "/tmp";
+        final String OUTPUT = cmd.getOptionValue("output") /*+ "/tmp"*/;
         final int DATASET_SIZE = Integer.parseInt(cmd.getOptionValue("dimensionality"));
         final int DISTANCE = Integer.parseInt(
                 cmd.getOptionValue("norm") != null ?
-                        cmd.getOptionValue("norm") : "10");
+                        cmd.getOptionValue("norm") : "2");
         final int K = Integer.parseInt(
                 cmd.getOptionValue("clusters") != null ?
                         cmd.getOptionValue("clusters") : "3");
@@ -151,17 +144,34 @@ public class KMeansMapReduce {
                         cmd.getOptionValue("threshold") : "0.0001");
         final int MAX_ITERATIONS = Integer.parseInt(
                 cmd.getOptionValue("maxiterations") != null ?
-                        cmd.getOptionValue("maxiterations") : "10");
+                        cmd.getOptionValue("maxiterations") : "30");
+
+        conf.setInt("k", K);
+        conf.setInt("distance", DISTANCE);
+
+        final FileSystem hdfs = FileSystem.get(conf);
 
         int iterations = 0;
 
-        Point[] newCentroids = centroidsInit(conf, INPUT, OUTPUT + "/centroids.init", K);
+        Point[] newCentroids = centroidsInit(conf, hdfs, INPUT, OUTPUT + "/centroids.init", K);
+                /*new Point[]{
+                new Point(new double[]{0.57653,0.112169,0.14516,0.572644,-0.249918,0.286633,-0.0179414,0.0634963,-0.158324,0.232656}),
+                new Point(new double[]{0.898475,0.790342,-0.148385,0.46525,-0.189143,0.0693426,-0.378514,0.459615,0.196876,-0.893735}),
+                new Point(new double[]{0.540348,0.370978,0.109488,0.479122,0.0543669,0.075477,-0.171384,0.160625,-0.00279379,-0.957495})
+        };*/
         Point[] oldCentroids;
 
         long time_start = System.currentTimeMillis();
         do {
             iterations ++;
+
             Job job = Job.getInstance(conf, "iteration_" + iterations);
+
+            // Save centroids in conf
+            for(int i = 0; i < K; i++) {
+                job.getConfiguration().unset("centroid." + i);
+                job.getConfiguration().set("centroid." + i, newCentroids[i].toString());
+            }
 
             // Set adapters
             job.setJarByClass(KMeansMapReduce.class);
@@ -173,11 +183,13 @@ public class KMeansMapReduce {
 
             // Set input 'n output 'n stuff
             FileInputFormat.addInputPath(job, new Path(INPUT));
-            FileOutputFormat.setOutputPath(job, new Path(OUTPUT));
+            FileOutputFormat.setOutputPath(job, new Path(OUTPUT + "/it" + iterations));
 
-            job.setOutputKeyClass(IntWritable.class);
-            job.setOutputValueClass(AverageBuilder.class);
-            job.setMapOutputValueClass(Point.class);
+            job.setMapOutputKeyClass(IntWritable.class);
+            job.setMapOutputValueClass(AverageBuilder.class);
+
+            job.setOutputKeyClass(Text.class);
+            job.setOutputValueClass(Text.class);
 
             job.setInputFormatClass(TextInputFormat.class);
             job.setOutputValueClass(TextOutputFormat.class);
@@ -191,22 +203,27 @@ public class KMeansMapReduce {
 
             // new centroids incoming!
             oldCentroids = newCentroids;
-            newCentroids = readCentroids(conf, K, OUTPUT);
-
-            // Save new centroids in conf
-            for(int i = 0; i < K; i++) {
-                conf.unset("centroid-" + i);
-                conf.set("centroid-" + i, newCentroids[i].toString());
-            }
-
+            newCentroids = readCentroids(conf, K,OUTPUT + "/it" + iterations);
         } while (iterations <= MAX_ITERATIONS && !stopCriterion(oldCentroids, newCentroids, DISTANCE, THRESHOLD));
 
         long time_stop = System.currentTimeMillis();
 
-        // Clean-it-up
-        finalize(conf, newCentroids, genericArgs[1]);
-
         System.out.println("Ò fatto iterazioni in numero " + iterations);
         System.out.println("Ò lavorato per millisecondi " + (time_stop-time_start));
+
+        FSDataOutputStream dos = hdfs.create(new Path(OUTPUT + "/centroids"), true);
+
+        Arrays.stream(newCentroids).map(Point::toString).forEach(s -> {
+            try {
+                dos.writeBytes(s);
+                dos.write('\n');
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        dos.flush();
+        dos.close();
+
+        hdfs.close();
     }
 }
