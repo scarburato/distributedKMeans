@@ -15,6 +15,10 @@ public class Point implements Writable {
         dimension = 0;
     }
 
+    /**
+     * Works kinda like a C++ copy constructor
+     * @param c A point to copy
+     */
     public Point(final Point c) {
         dimension = c.dimension;
         if(dimension > 0)
@@ -95,6 +99,13 @@ public class Point implements Writable {
         return out.toString();
     }
 
+    /**
+     * Compute the value of || a - b || using norm h
+     * @param a A point
+     * @param b Another point
+     * @param h type of norm, only h = 1, 2, ... are supported
+     * @return the result of the computation
+     */
     public static double distance(final Point a, final Point b, int h) {
         if (h <= 0)
             throw new IllegalArgumentException("I'm sorry Dave, I'm afraid I cannot do that");
@@ -107,10 +118,18 @@ public class Point implements Writable {
         for(int i = 0; i < a.dimension; i++)
             m += Math.pow(Math.abs(a.components[i] - b.components[i]), h);
 
+        // root h-th
         m = Math.pow(m, 1d/h);
         return m;
     }
 
+    /**
+     * Creates a new point from strings
+     * @param centroid_comps_str An array in which each component is a string
+     *                           representing a double, the i-th string will be
+     *                           parsed and become the vector's i-th component
+     * @return A point
+     */
     public static Point fromString(String[] centroid_comps_str) {
         double[] centroid_comps = new double[centroid_comps_str.length];
 
