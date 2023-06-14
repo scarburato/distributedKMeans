@@ -20,30 +20,16 @@ public class KMeansMapper extends Mapper<LongWritable, Text, IntWritable, Point>
         centroids = new Point[k];
 
         // Init centroids
-        for(int i = 0; i < k; i++) {
-            // Parse 'n stuff
-            String[] centroid_comps_str = context.getConfiguration().getStrings("centroid-"+i);
-            double[] centroid_comps = new double[centroid_comps_str.length];
+        for(int i = 0; i < k; i++)
+            // Parse centroid's coordinates from Hadoop's context
+            centroids[i] = Point.fromString(context.getConfiguration().getStrings("centroid-"+i));
 
-            for(int j = 0; j < centroid_comps.length; j++)
-                centroid_comps[j] = Double.parseDouble(centroid_comps_str[j]);
-
-            centroids[i] = new Point(centroid_comps);
-        }
     }
 
     @Override
     protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
         // Load datum's coordinates from string (from file)
-        String[] datum_comps_str = value.toString().split(",");
-        double[] datum_comps = new double[datum_comps_str.length];
-
-        // Parse
-        for(int j = 0; j < datum_comps.length; j++)
-            datum_comps[j] = Double.parseDouble(datum_comps_str[j]);
-
-        // Create point
-        Point datum = new Point(datum_comps);
+        Point datum = Point.fromString(value.toString().split(","));
 
         double minDist = Double.POSITIVE_INFINITY;
         int closestCentroid = -1;
