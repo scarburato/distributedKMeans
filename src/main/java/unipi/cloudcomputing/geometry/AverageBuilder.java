@@ -22,6 +22,7 @@ public class AverageBuilder implements Writable {
     }
 
     public AverageBuilder() {
+        sum = new Point();
         cardinality = 0;
     };
 

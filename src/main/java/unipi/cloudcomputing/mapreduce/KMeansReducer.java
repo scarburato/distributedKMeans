@@ -11,9 +11,12 @@ import java.io.IOException;
 public class KMeansReducer extends Reducer<IntWritable, AverageBuilder, Text, Text> {
     @Override
     protected void reduce(IntWritable key, Iterable<AverageBuilder> values, Context context) throws IOException, InterruptedException {
-        AverageBuilder averageBuilderEnjoyer = values.iterator().next();
+        AverageBuilder averageBuilderEnjoyer = new AverageBuilder();
+
+        // Compute sum for then compute the average point for cluster `key`
         values.forEach(averageBuilderEnjoyer::addToComputation);
 
+        // Output <key, average point of cluster `key`>
         context.write(new Text(key.toString()), new Text(averageBuilderEnjoyer.computeAverage().toString()));
     }
 }

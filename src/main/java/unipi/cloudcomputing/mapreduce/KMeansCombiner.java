@@ -11,9 +11,12 @@ public class KMeansCombiner extends Reducer<IntWritable, Point, IntWritable, Ave
 
     @Override
     protected void reduce(IntWritable key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
-        AverageBuilder sum = new AverageBuilder(values.iterator().next());
+        AverageBuilder sum = new AverageBuilder();
+
+        // Compute partial sum for the sub-set of points of cluster `key`
         values.forEach(sum::addToComputation);
 
+        // Output
         context.write(key, sum);
     }
 }

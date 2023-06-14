@@ -31,6 +31,13 @@ public class Point implements Writable {
     }
 
     public void add(final Point addendum) {
+        // If the object is un-initialized, just make a copy
+        if (dimension == 0 && addendum.dimension > 0) {
+            dimension = addendum.dimension;
+            components = Arrays.copyOf(addendum.components, addendum.dimension);
+            return;
+        }
+
         if (addendum.dimension != dimension)
             throw new IllegalArgumentException("Addenda's dimensionalities must be the same!");
 
@@ -39,6 +46,13 @@ public class Point implements Writable {
     }
 
     public void sub(final Point addendum) {
+        // If the object is un-initialized, just make a copy
+        if (dimension == 0 && addendum.dimension > 0) {
+            dimension = addendum.dimension;
+            components = Arrays.copyOf(addendum.components, addendum.dimension);
+            return;
+        }
+
         if (addendum.dimension != dimension)
             throw new IllegalArgumentException("Addenda's dimensionalities must be the same!");
 
@@ -114,6 +128,13 @@ public class Point implements Writable {
         System.out.println(b);
 
         System.out.println(Point.distance(a,b,2) + "\t" + Math.sqrt(2.0));
+
+        a.add(b);
+        System.out.println(a);
+
+        Point c = new Point();
+        c.add(a);
+        System.out.println(c);
     }
 
     // @TODO Average method that takes a stream of points
