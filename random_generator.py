@@ -23,8 +23,12 @@ dimension = 4
 data, labels = generate_cluster_data(num_points, num_clusters, dimension)
 
 # Visualizzazione dei dati
-fig = plt.figure()
+'''fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=labels, cmap='viridis')
 ax.set_title("Dati di prova con {} cluster".format(num_clusters))
-plt.show()
+plt.show()'''
+
+# Salvataggio dei punti su file
+output_file = "random_samples.txt"
+np.savetxt(output_file, data)
