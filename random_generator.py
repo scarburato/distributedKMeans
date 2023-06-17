@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,18 +17,18 @@ def generate_cluster_data(num_points, num_clusters, dimension):
     return np.array(data), np.array(labels)
 
 # Generazione dei dati di prova
-num_points = 1000000
-num_clusters = 3
-dimension = 4
+num_points = int(sys.argv[1])
+num_clusters = int(sys.argv[2])
+dimension = 3
 
 data, labels = generate_cluster_data(num_points, num_clusters, dimension)
 
 # Visualizzazione dei dati
-'''fig = plt.figure()
+fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=labels, cmap='viridis')
 ax.set_title("Dati di prova con {} cluster".format(num_clusters))
-plt.show()'''
+plt.show()
 
 # Salvataggio dei punti su file
 output_file = "random_samples.txt"
