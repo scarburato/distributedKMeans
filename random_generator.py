@@ -32,4 +32,4 @@ plt.show()
 
 # Salvataggio dei punti su file
 output_file = "random_samples.txt"
-np.savetxt(output_file, data)
+np.savetxt(output_file, data, delimiter = ",")
