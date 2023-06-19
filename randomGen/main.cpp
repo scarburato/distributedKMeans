@@ -71,7 +71,7 @@ int main(int argl, char *argv[])
 	for(unsigned long i = 0; i < samples; i++) {
 		CentroidGenerator& cg = centroids[i % k];
 
-		std::cout << (i%k) << ',';
+		//std::cout << (i%k) << ',';
 		for(unsigned i = 0; i < DIMENSIONALITY; i++)
 			std::cout << cg.second[i](gen) << (i != DIMENSIONALITY - 1 ? ',' : '\n');
 	}
