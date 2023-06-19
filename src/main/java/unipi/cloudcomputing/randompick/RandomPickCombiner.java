@@ -1,8 +1,7 @@
 package unipi.cloudcomputing.randompick;
 
-import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.ShortWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
@@ -10,7 +9,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class RandomPickCombiner extends Reducer<ShortWritable, Sample, ShortWritable, Sample> {
+public class RandomPickCombiner extends Reducer<NullWritable, Sample, NullWritable, Sample> {
     private int k;
 
     @Override
@@ -19,8 +18,8 @@ public class RandomPickCombiner extends Reducer<ShortWritable, Sample, ShortWrit
     }
 
     @Override
-    protected void reduce(ShortWritable key, Iterable<Sample> values, Context context) throws IOException, InterruptedException {
-        SortedMap<Long, String> firstKSamples = sample(key, values, k);
+    protected void reduce(NullWritable key, Iterable<Sample> values, Context context) throws IOException, InterruptedException {
+        SortedMap<Long, String> firstKSamples = sample(values, k);
 
         // Finally we emit the first k samples on this node
         for (Map.Entry<Long, String> entry : firstKSamples.entrySet()) {
@@ -32,7 +31,7 @@ public class RandomPickCombiner extends Reducer<ShortWritable, Sample, ShortWrit
         }
     }
 
-    public static SortedMap<Long, String> sample(ShortWritable key, Iterable<Sample> values, int k) {
+    public static SortedMap<Long, String> sample(Iterable<Sample> values, int k) {
         SortedMap<Long, String> firstKSamples = new TreeMap<>();
 
         for (Sample sample : values) {

@@ -3,6 +3,7 @@ package unipi.cloudcomputing.randompick;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.ShortWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -16,7 +17,7 @@ import java.io.IOException;
 public class Test {
     public static void main(String[] argv) throws IOException, InterruptedException, ClassNotFoundException {
         Configuration conf = new Configuration();
-        conf.setInt("k", 10);
+        conf.setInt("k", Integer.parseInt(argv[0]));
 
         Job job = Job.getInstance(conf, "randomPickerTest");
 
@@ -28,7 +29,7 @@ public class Test {
         job.setReducerClass(RandomPickReducer.class);
 
         // define mapper's output key-value
-        job.setMapOutputKeyClass(ShortWritable.class);
+        job.setMapOutputKeyClass(NullWritable.class);
         job.setMapOutputValueClass(Sample.class);
 
         // define reducer's output key-value
@@ -36,8 +37,8 @@ public class Test {
         job.setOutputValueClass(Text.class);
 
         // define I/O
-        FileInputFormat.addInputPath(job, new Path("samples/dati.csv"));
-        FileOutputFormat.setOutputPath(job, new Path("test_out"));
+        FileInputFormat.addInputPath(job, new Path(argv[1]));
+        FileOutputFormat.setOutputPath(job, new Path(argv[2]));
 
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);

@@ -7,10 +7,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.ShortWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -55,7 +52,7 @@ public class KMeansMapReduce {
         job.setReducerClass(RandomPickReducer.class);
 
         // define mapper's output key-value
-        job.setMapOutputKeyClass(ShortWritable.class);
+        job.setMapOutputKeyClass(NullWritable.class);
         job.setMapOutputValueClass(Sample.class);
 
         // define reducer's output key-value
@@ -153,12 +150,12 @@ public class KMeansMapReduce {
 
         int iterations = 0;
 
-        Point[] newCentroids = centroidsInit(conf, hdfs, INPUT, OUTPUT + "/centroids.init", K);
-                /*new Point[]{
-                new Point(new double[]{0.57653,0.112169,0.14516,0.572644,-0.249918,0.286633,-0.0179414,0.0634963,-0.158324,0.232656}),
-                new Point(new double[]{0.898475,0.790342,-0.148385,0.46525,-0.189143,0.0693426,-0.378514,0.459615,0.196876,-0.893735}),
-                new Point(new double[]{0.540348,0.370978,0.109488,0.479122,0.0543669,0.075477,-0.171384,0.160625,-0.00279379,-0.957495})
-        };*/
+        Point[] newCentroids = //centroidsInit(conf, hdfs, INPUT, OUTPUT + "/centroids.init", K);
+                new Point[]{
+                new Point(new double[]{8.260763331599379455e+01,6.638575770618231786e+01,4.207215558647670406e+01,1.026918206119162704e+02}),
+                new Point(new double[]{6.574684243125865635e+01,8.361195989222709102e+01,9.745126076936189463e+01,8.156734400913346406e+01}),
+                new Point(new double[]{8.449206302900273613e+01,6.620152064342640585e+01,4.390389397902335133e+01,1.038488089937075216e+02})
+        };
         Point[] oldCentroids;
 
         long time_start = System.currentTimeMillis();
