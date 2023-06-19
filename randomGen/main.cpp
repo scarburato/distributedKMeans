@@ -3,8 +3,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <iomanip>
 
-#define DIMENSIONALITY 2
+#define DIMENSIONALITY 6
 
 struct Point
 {
@@ -44,6 +45,8 @@ int main(int argl, char *argv[])
 	std::mt19937 gen(0xcafebabe + 0xdeadbeaf + 7);
 	std::uniform_real_distribution<> dis(-200.0, +200.0);
 	std::uniform_real_distribution<> shape(5, 15);
+
+	std::cout << std::setprecision(5);
 
 	// Generate random centroids
 	for(unsigned i = 0; i < k; i++) {
