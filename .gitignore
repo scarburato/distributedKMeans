@@ -44,3 +44,5 @@ test_out.*
 random_samples.txt
 generated/*
 test_out_sample
+randomGen/a.out
+randomGen/test
