@@ -42,3 +42,5 @@ build/
 test_out
 test_out.*
 random_samples.txt
+generated/*
+test_out_sample
