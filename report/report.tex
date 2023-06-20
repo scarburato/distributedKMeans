@@ -2,6 +2,7 @@
 \documentclass[parskip=full]{report}
 
 \usepackage{amsmath}
+\usepackage{amsfonts}
 \usepackage{listings}
 %\usepackage{beramono}
 \usepackage{float}
@@ -15,6 +16,8 @@
 \usepackage{subcaption}
 \usepackage{float}
 \usepackage{pdfpages}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
 
 \usepackage{tikz}
 
@@ -77,7 +80,87 @@ minimum height=3em, minimum width=6em]
 
 \chapter{Algorithm to select initial centroids}
 
+\section{Idea}
 
+\paragraph{}
+To run the \textit{K-means} algorithm is necessary to select $k$ initial centroids, they can either be selected statically by the user --- that is as an algorithm's parameter --- or stochastically from the data; in the latter case they could either be drawn randomly with uniform probability or by employing a probability function that changes the likelihood to draw an element accordingly to certain metrics. For simplicity's sake our implementation chooses the $k$ initial point with equal probability.
+
+\paragraph{}
+We used a \textit{Map-Reduce} procedure to draw those those $k$ point
+
+\section{Implementation}
+
+\paragraph{Key}
+This \textit{MapReduce} procedure doesn't use a key, so only one reducer will 
+be spawned by the framework, in our \textit{Hadoop} implementation we used the 
+\texttt{NullWritable} data-type as output key to reduce traffic.
+
+\paragraph{Mapper}
+The mapper assigns a random label to each data point, this value is not be confused with the \textit{MapReduce}'s key; finally it emits the tuple made of the label and the data point.
+
+\paragraph{Combiner and Reducer}
+Then, the combiner sorts the tuples by their label and emits the first $k$ 
+smallest labels and their samples. Finally, the reducer performs the same 
+operations as the combiner, emitting $k$ values.
+
+\paragraph{Probability}
+If the data are split equally among the nodes and the random numbers generator generates all numbers with equal probability, then all dataset's samples have circa equal probability to be drawn.
+
+\paragraph{Complexity}
+Let $n = |D|$ the number of samples, $N$ the number of nodes and $k$ the number of samples to draw; then the time complexity is
+
+\[
+T \in O \left(\dfrac{n}{N} \cdot \left(1 + \log(k)\right)\right)
+\] 
+
+and the space complexity is
+
+\[
+S \in \Theta \left(k\right)
+\]
+
+if a sorted data structure is used to store only the first $k$ smallest labels 
+and their associated data.
+
+\begin{algorithm}[H]
+	\caption{Random select}\label{alg:random_map}
+	\begin{algorithmic}
+		\Require $k \in \mathbb{N}^+$
+		\Procedure{Mapper}{nLine, $r$}
+			\State $I \gets \Call{rand}{\;}$
+				\Comment{Assign a random number to each file's row}
+			\State \Return $\left< \texttt{null}, \left< I, r\right> \right>$
+				\Comment{Constant key for all lines}
+		\EndProcedure
+		\vspace{.25cm}
+		\Procedure{Combiner}{$S$}
+			\State $L$ is a data structure \textbf{ordered} by key $I$
+				\Comment{E.g. a binary search tree}
+			\State $L \gets \emptyset$
+			\While{$S \neq \emptyset$}
+				\State $\left< \texttt{null}, \left< I, r\right> \right> \
+					\gets \Call{read}{S}$
+					\Comment{Read data from the mapper (or combiners)}
+				%\State $L \gets L \bigcup \left\{ \left< I, r\right>\right\}$
+				\State \Call{insert}{$L$, $\left< I, r\right>$}
+				\If{$|L| > k$}
+					\Comment{We store at most $k + 1$ elements}
+					\State \Call{pop\_last}{L}
+					\Comment{We remove the last element (sorted by $I$)}
+				\EndIf
+				
+				\State \Call{next}{$S$}
+			\EndWhile
+			\ForAll{$ \left< I, r\right> \in L$}
+				\State \Call{emitt}{$\left< \texttt{null}, \left< I, r\right> \right>$}
+			\EndFor
+		\EndProcedure
+		\vspace{.25cm}
+		\Procedure{Reducer}{$S$}
+			\State \Call{Combiner}{$S$} \Comment{Same as the combiner}
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
 
 \chapter{K-means}
 
