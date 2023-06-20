@@ -15,6 +15,9 @@
 \usepackage{subcaption}
 \usepackage{float}
 \usepackage{pdfpages}
+\usepackage{algorithmicx}
+\usepackage[ruled]{algorithm}
+\usepackage{algpseudocode}
 
 \usepackage{tikz}
 
@@ -80,7 +83,89 @@ minimum height=3em, minimum width=6em]
 
 
 \chapter{K-means}
+	
+	The following two classes, \texttt{Point} and \texttt{AverageBuilder}, are utilized to facilitate the required computations to implement the K-means algorithm using the MapReduce paradigm.
+	
+	\subsection*{\texttt{Point} Class}
+	
+	The \texttt{Point} class represents a point in a multi-dimensional space. It offers the following functionalities:
+	
+	\begin{itemize}
+		\item Setting the components of a point, performing mathematical operations (addition, subtraction, scalar multiplication), calculating distance, and converting to/from string representation.
+		\item Implementation of the \texttt{Writable} interface to support serialization and deserialization.
+	
+	\end{itemize}
+	
+	\subsection*{\texttt{AverageBuilder} Class}
+	
+	The \texttt{AverageBuilder} class aids in computing the average of multiple points. It provides the following features:
+	
+	\begin{itemize}
+		\item Storage of the sum of points and their cardinality (number of points).
+		\item Methods to add points to the computation, either individually or by combining with another \texttt{AverageBuilder} object.
+		\item Computation and retrieval of the average point.
+		\item Implementation of the \texttt{Writable} interface for serialization and deserialization.
+	\end{itemize}
+	
+	The \texttt{Point} class handles point-related operations in the Mapper and Reduce classes, while the \texttt{AverageBuilder} class facilitates efficient computation of the average of multiple points used in the combiner and reducer.
+	
 
+
+	\subsection*{\texttt{Pseudo-code}}
+	
+	\subsection*{Mapper}
+The map phase of the k-means algorithm is responsible for assigning each data point to the nearest cluster center. It involves calculating the distance between the input data point and each centroid, where all centroids are stored globally and accessible to every mapper. The map phase keeps track of the index of the cluster center that has the minimum distance to the data point. The output of the map function is a key-value pair, where the key represents the index of the nearest cluster center, and the value remains as the data point itself.
+
+
+	\begin{algorithm}
+		\caption{KMeansMapper}
+		\begin{algorithmic}[1]
+			
+
+			\Procedure{Map}{key, $p$, centroids}
+			\State minDistance $\gets \infty$
+			\State closestCentroid $\gets -1$
+			\For{$i \gets 0$ \textbf{to} length(centroids)-1}
+			\State distance $\gets$ calculateDistance(centroids[$i$], $p$)
+			\If{distance $\geq$ minDistance}
+			\State \textbf{continue}
+			\EndIf
+			\State closestCentroid $\gets i$
+			\State minDistance $\gets$ distance
+			\EndFor
+			\State \textbf{return} (closestCentroid, $p$)
+			
+			\EndProcedure
+		\end{algorithmic}
+	\end{algorithm}
+	
+	
+	\subsection*{Reducer}
+	
+\begin{algorithm}
+	\caption{KMeansReducer}\label{algo:kmeans-reducer}
+	\begin{algorithmic}[1]
+		\Procedure{reduce}{key, values}
+		\State sum $\gets$ 0
+		\State cardinality $\gets$ 0
+		\For{\textbf{each} value \textbf{in} values}
+		\State sum $\gets$ sum + value
+		\State cardinality $\gets$ cardinality + 1
+		\EndFor
+		
+		\State new\_center $\gets$  $\dfrac{sum}{cardinality}$
+		\State \textbf{return} (key, new\_center)
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
+
+	
+
+
+
+
+		
+	
 
 
 \chapter{Results}
