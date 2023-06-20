@@ -167,9 +167,10 @@ and their associated data.
 
 	The following two classes, \texttt{Point} and \texttt{AverageBuilder}, are utilized to facilitate the required computations to implement the K-means algorithm using the MapReduce paradigm.
 
-	\subsection*{\texttt{Point} Class}
+	\section{\texttt{Point} Class}
 
-	The \texttt{Point} class represents a point in a multi-dimensional space. It offers the following functionalities:
+	The \texttt{Point} class represents a point in a $d$-dimensional space. It 
+	offers the following functionalities:
 
 	\begin{itemize}
 		\item Setting the components of a point, performing mathematical operations (addition, subtraction, scalar multiplication), calculating distance, and converting to/from string representation.
@@ -177,7 +178,7 @@ and their associated data.
 
 	\end{itemize}
 
-	\subsection*{\texttt{AverageBuilder} Class}
+	\section{\texttt{AverageBuilder} Class}
 
 	The \texttt{AverageBuilder} class aids in computing the average of multiple points. It provides the following features:
 
@@ -192,9 +193,9 @@ and their associated data.
 
 
 
-	\subsection*{\texttt{Pseudo-code}}
+\section{Pseudo-code}
 
-	\subsection*{Mapper}
+\subsection{Mapper}
 The map phase of the k-means algorithm is responsible for assigning each data point to the nearest cluster center. It involves calculating the distance between the input data point and each centroid, where all centroids are stored globally and accessible to every mapper. The map phase keeps track of the index of the cluster center that has the minimum distance to the data point. The output of the map function is a key-value pair, where the key represents the index of the nearest cluster center, and the value remains as the data point itself.
 
 
@@ -221,7 +222,7 @@ The map phase of the k-means algorithm is responsible for assigning each data po
 	\end{algorithm}
 
 
-	\subsection*{Reducer}
+\subsection{Reducer}
 
 \begin{algorithm}
 	\caption{KMeansReducer}\label{algo:kmeans-reducer}
