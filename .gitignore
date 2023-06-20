@@ -46,3 +46,11 @@ generated/*
 test_out_sample
 randomGen/a.out
 randomGen/test
+
+#ScHiFoTeX
+report/*.aux
+report/*.log
+report/*.out
+report/*.pdf
+report/*.gz
+report/*.toc
