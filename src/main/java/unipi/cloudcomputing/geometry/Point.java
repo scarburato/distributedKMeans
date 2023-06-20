@@ -159,6 +159,4 @@ public class Point implements Writable {
         c.add(a);
         System.out.println(c);
     }
-
-    // @TODO Average method that takes a stream of points
 }
