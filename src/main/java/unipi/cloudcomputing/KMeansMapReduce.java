@@ -152,9 +152,9 @@ public class KMeansMapReduce {
 
         Point[] newCentroids = //centroidsInit(conf, hdfs, INPUT, OUTPUT + "/centroids.init", K);
                 new Point[]{
-                new Point(new double[]{8.260763331599379455e+01,6.638575770618231786e+01,4.207215558647670406e+01,1.026918206119162704e+02}),
-                new Point(new double[]{6.574684243125865635e+01,8.361195989222709102e+01,9.745126076936189463e+01,8.156734400913346406e+01}),
-                new Point(new double[]{8.449206302900273613e+01,6.620152064342640585e+01,4.390389397902335133e+01,1.038488089937075216e+02})
+                new Point(new double[]{162.94,156.03,-22.305,-109.06,170.86,123.48}),
+                new Point(new double[]{159.27,124.91,-13.379,-106.33,164.68,128.92}),
+                new Point(new double[]{150.33,126.14,-8.5117,-98.02,173.88,139.28})
         };
         Point[] oldCentroids;
 
