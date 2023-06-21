@@ -117,6 +117,10 @@ public class KMeansMapReduce {
         };*/
         Point[] oldCentroids;
 
+        System.out.println("In procinto d'avviare il k-means, la procedura à scelto come punti d'avvio:");
+        for(Point c: newCentroids)
+            System.out.println(c);
+
         long time_start = System.currentTimeMillis();
         do {
             iterations ++;
@@ -170,6 +174,7 @@ public class KMeansMapReduce {
         FSDataOutputStream dos = hdfs.create(new Path(OUTPUT + "/centroids"), true);
 
         Arrays.stream(newCentroids).map(Point::toString).forEach(s -> {
+            System.out.println("Ò assegnato un centroide in " + s);
             try {
                 dos.writeBytes(s);
                 dos.write('\n');
