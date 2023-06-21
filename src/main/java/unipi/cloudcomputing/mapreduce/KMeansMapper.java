@@ -34,7 +34,9 @@ public class KMeansMapper extends Mapper<LongWritable, Text, IntWritable, Averag
         int closestCentroid = -1;
 
         // Find closest centroid to datum
+        // tetha(k)
         for(int i = 0; i < centroids.length; i++) {
+            // tetha(d)
             double distance = Point.distance(centroids[i], datum, p);
 
             if(distance >= minDist)

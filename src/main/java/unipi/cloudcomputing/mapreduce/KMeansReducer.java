@@ -14,6 +14,7 @@ public class KMeansReducer extends Reducer<IntWritable, AverageBuilder, Text, Te
         AverageBuilder averageBuilderEnjoyer = new AverageBuilder();
 
         // Compute sum for then compute the average point for cluster `key`
+        // O(Nk)
         values.forEach(averageBuilderEnjoyer::addToComputation);
 
         // Output <key, average point of cluster `key`>

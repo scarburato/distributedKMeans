@@ -13,6 +13,7 @@ public class KMeansCombiner extends Reducer<IntWritable, AverageBuilder, IntWrit
         AverageBuilder sum = new AverageBuilder();
 
         // Compute partial sum for the sub-set of points of cluster `key`
+        // O(n/(Nk))
         values.forEach(sum::addToComputation);
 
         // Output
