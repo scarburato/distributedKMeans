@@ -396,12 +396,21 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 \paragraph{Results}
 We observe, as expected, a linear growth of the execution time with respect to 
 $n$; but only after the file's size exceeds the chunk limit of $128\text{MB}$, 
-with $k = 3$ it's when $n > 3 \times 10^6$
+with $d = 6$ it's when $n > 3 \times 10^6$
 \footnote{
 	Note that we're using 
 	logarithmic scales, so a linear relation will 
 	be represented as a line of slope $1$ and offset $log_{10}(m)$, where $m$ 
 	is the slope of the linear relation.
 }
+
+\paragraph{Considerations}
+We see that the MapReduce framework begins to make sense when we work with large amount of data that can be split over multiple computing nodes, otherwise the system's overhead is so large that the execution time seems to remain constant for smaller datasets. Of course, we benchmarked a system made only of three servers and \textbf{very} limited resources, in a real scenario with more powerful machines the execution time should be much better.
+
+\paragraph{Improvements}
+Finally, we have to state that it might be possible to improve the procedure's speed by replacing the double precision floating point numbers with just single precision ones or even, with appropriate considerations, with integers as the \textit{ALU} is orders of magnitude faster than the \textit{FPU}; however the latter solution is difficult to implement as we'd have to scale properly the values and we'd have to compute roots of numbers.
+
+\section{Comparison}
+
 
 \end{document}          
