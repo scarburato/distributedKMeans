@@ -37,6 +37,7 @@ int main(int argl, char *argv[])
 	// Paramaeters
 	const unsigned k = std::stoul(argv[1]);
 	const unsigned samples = std::stoul(argv[2]);
+	const unsigned noise = std::min((unsigned long)(samples * 0.08), 1000ul);
 
 	// Centroids & their generators
 	std::vector<CentroidGenerator> centroids;
@@ -48,7 +49,8 @@ int main(int argl, char *argv[])
 	std::mt19937 gen_cen(0xcafebabe + 0xdeadbeaf + 7 - 1);
 	std::mt19937 gen(r());
 	std::uniform_real_distribution<> centroids_random_variable(-150.0, +200.0);
-	std::uniform_real_distribution<> shape_random_variable(10, 23);
+	std::uniform_real_distribution<> noise_g(-150.0-30.0, 200.0+30.0);
+	std::uniform_real_distribution<> shape_random_variable(8, 26);
 
 	std::cout << std::setprecision(7);
 
@@ -81,6 +83,13 @@ int main(int argl, char *argv[])
 		std::cout << (i%k) << ',';
 		for(unsigned i = 0; i < DIMENSIONALITY; i++)
 			std::cout << cg.second[i](gen) << (i != DIMENSIONALITY - 1 ? ',' : '\n');
+	}
+
+	// Generate noise
+	for(unsigned long i = 0; i < noise; i++) {
+		std::cout << "N,";
+		for(unsigned i = 0; i < DIMENSIONALITY; i++)
+			std::cout << noise_g(gen) << (i != DIMENSIONALITY - 1 ? ',' : '\n');
 	}
 
 	return 0;
