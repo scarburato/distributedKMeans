@@ -22,6 +22,7 @@ for t in "${STEPS[@]}"; do
                         -o "/user/hadoop/project/output${t}_d${D}_run${run}" \
                         -d ${D} \
                         --clusters $K \
+                        --maxiterations 20\
                 >> run.log
         done
 done
