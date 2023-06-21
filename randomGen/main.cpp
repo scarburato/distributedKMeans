@@ -5,7 +5,7 @@
 #include <vector>
 #include <iomanip>
 
-#define DIMENSIONALITY 6
+#define DIMENSIONALITY 2
 
 struct Point
 {
@@ -40,13 +40,17 @@ int main(int argl, char *argv[])
 
 	// Centroids & their generators
 	std::vector<CentroidGenerator> centroids;
+	
+	// Seed with a real random value, if available
+	std::random_device r;
 
 	// Generators
-	std::mt19937 gen(0xcafebabe + 0xdeadbeaf + 7);
-	std::uniform_real_distribution<> dis(-200.0, +200.0);
-	std::uniform_real_distribution<> shape(5, 15);
+	std::mt19937 gen_cen(0xcafebabe + 0xdeadbeaf + 7 - 1);
+	std::mt19937 gen(r());
+	std::uniform_real_distribution<> centroids_random_variable(-150.0, +200.0);
+	std::uniform_real_distribution<> shape_random_variable(10, 23);
 
-	std::cout << std::setprecision(5);
+	std::cout << std::setprecision(7);
 
 	// Generate random centroids
 	for(unsigned i = 0; i < k; i++) {
@@ -56,10 +60,10 @@ int main(int argl, char *argv[])
 		// Generate centorid and its random vector
 		for(unsigned i = 0; i < DIMENSIONALITY; i++)
 		{
-			c.componenets[i] = dis(gen);
+			c.componenets[i] = centroids_random_variable(gen_cen);
 
 			// Using a different standard dev. for each random vector's component changes the cluster's shape!
-			generators.push_back(std::normal_distribution<>(c.componenets[i], shape(gen)));
+			generators.push_back(std::normal_distribution<>(c.componenets[i], shape_random_variable(gen_cen)));
 		}
 
 		centroids.push_back(std::make_pair(c, generators));
@@ -74,7 +78,7 @@ int main(int argl, char *argv[])
 	for(unsigned long i = 0; i < samples; i++) {
 		CentroidGenerator& cg = centroids[i % k];
 
-		//std::cout << (i%k) << ',';
+		std::cout << (i%k) << ',';
 		for(unsigned i = 0; i < DIMENSIONALITY; i++)
 			std::cout << cg.second[i](gen) << (i != DIMENSIONALITY - 1 ? ',' : '\n');
 	}
