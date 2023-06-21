@@ -244,26 +244,66 @@ The map phase of the k-means algorithm is responsible for assigning each data po
 
 \chapter{Results}
 
+\section{Synthetic data}
+
+\paragraph{Centroids}
+To test our program we had to generate synthetic data. We wrote a program that 
+generates $k$ points $c_1, \dots, c_k$, the centroids, by drawing them from a 
+random variable 
+$C \in \left[-B,B\right]^d$ that has a continuous uniform distribution of 
+probability in its domain. 
+
+\paragraph{Cluster's data}
+For each generated centroid $c_i$, we generate a \emph{Gaussian standard 
+vector} $X_i \sim \mathcal{N}_d(\mu, \Sigma)$ with mean $\mu = c_i$ and the 
+variance of each component 
+$\sigma_i$ is 
+drawn from a random variable with uniform distribution of probability, this 
+allows the program to generate ellipsoidal clusters. Finally, the program 
+iterates through all centroids' random vectors $X_0, ..., X_k$ until it 
+generates $n$ points, those points are streamed to \texttt{stdout} and written 
+to a file.
+
+\paragraph{Comparisons}
+We had to run the program several times to generate different files with 
+different sizes, for comparison's sake it is necessary for the clusters' shapes 
+and centroids to be the same every time the program is ran; to achieve this it 
+uses the same  \emph{seed} for its pseudo-random number generator used to 
+initialize its random variables' parameters.
+
+\section{Benchmark}
+
 \begin{figure}[H]
 	\centering
 	\begin{tikzpicture}
 		\begin{axis}[
-				xmode=log,
-				ymode=log,
-				ymin=300,
-				ymax=20000,
-				xlabel={$|D|$},
-				ylabel={$t [\text{s}]$}
-				%log ticks with fixed point,
-				% for log axes, x filter operates on LOGS.
-				% and log(x * 1000) = log(x) + log(1000):
-				%x filter/.code=\pgfmathparse{#1 + 6.90775527898214},
+			xmode=log,
+			ymode=log,
+			ymin=300,
+			ymax=20000,
+			xlabel={$n$},
+			ylabel={$t [\text{s}]$}
+			%log ticks with fixed point,
+			% for log axes, x filter operates on LOGS.
+			% and log(x * 1000) = log(x) + log(1000):
+			%x filter/.code=\pgfmathparse{#1 + 6.90775527898214},
 			]
 			\addplot table [x=size, y=avg, col sep=comma] {../bench/k3mean.csv};
 			\addplot +[mark=none] coordinates {(3500000, 300) (3500000, 20000)};
 		\end{axis}
 	\end{tikzpicture}
-	\caption{$k=3$, red line when $|F| \ge 128\text{MB}$}
+	\caption{$k=3$, $d=6$, red line when $|F| \ge 128\text{MB}$}
 \end{figure}
+
+\paragraph{Results}
+We observe, as expected, a linear growth of the execution time with respect to 
+$n$; but only after the file's size exceeds the chunk limit of $128\text{MB}$, 
+with $k = 3$ it's when $n > 3 \times 10^6$
+\footnote{
+	Note that we're using 
+	logarithmic scales, so a linear relation will 
+	be represented as a line of slope $1$ and offset $log_{10}(m)$, where $m$ 
+	is the slope of the linear relation.
+}
 
 \end{document}          
