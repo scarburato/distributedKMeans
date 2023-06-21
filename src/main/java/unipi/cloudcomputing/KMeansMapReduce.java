@@ -40,48 +40,7 @@ public class KMeansMapReduce {
      */
     private static Point[] centroidsInit(Configuration conf, FileSystem hdfs, String pathString, String outString, int k)
             throws IOException, InterruptedException, ClassNotFoundException {
-
-        Job job = Job.getInstance(conf, "Pick initial centroids");
-        job.getConfiguration().setInt("k", k);
-
-        job.setJarByClass(KMeansMapReduce.class);
-
-        // set mapper/reducer
-        job.setMapperClass(RandomPickMapper.class);
-        job.setCombinerClass(RandomPickCombiner.class);
-        job.setReducerClass(RandomPickReducer.class);
-
-        // define mapper's output key-value
-        job.setMapOutputKeyClass(NullWritable.class);
-        job.setMapOutputValueClass(Sample.class);
-
-        // define reducer's output key-value
-        job.setOutputKeyClass(LongWritable.class);
-        job.setOutputValueClass(Text.class);
-
-        // define I/O
-        FileInputFormat.addInputPath(job, new Path(pathString));
-        FileOutputFormat.setOutputPath(job, new Path(outString));
-
-        job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputFormatClass(TextOutputFormat.class);
-
-        job.setNumReduceTasks(1);
-
-        // Boot-up the job!
-        boolean success = job.waitForCompletion(true);
-        if(!success) {
-            System.err.println(job.getJobName() + " has failed");
-            System.exit(0xee);
-        }
-
-        FileStatus[] nodes = hdfs.listStatus(new Path(outString), new GlobFilter("part-r-*"));
-
-        if(nodes.length == 0)
-            throw new RuntimeException("Unable to find initial centroids' files in " + outString);
-
-        return new BufferedReader(new InputStreamReader(hdfs.open(nodes[0].getPath())))
-                .lines()
+        return RandomPickManager.pick(pathString, outString, k, hdfs)
                 .map(s -> s.split("\t")[1])
                 .map(Point::fromString)
                 .toArray(Point[]::new);
@@ -150,12 +109,12 @@ public class KMeansMapReduce {
 
         int iterations = 0;
 
-        Point[] newCentroids = //centroidsInit(conf, hdfs, INPUT, OUTPUT + "/centroids.init", K);
-                new Point[]{
-                new Point(new double[]{162.94,156.03,-22.305,-109.06,170.86,123.48}),
-                new Point(new double[]{159.27,124.91,-13.379,-106.33,164.68,128.92}),
-                new Point(new double[]{150.33,126.14,-8.5117,-98.02,173.88,139.28})
-        };
+        Point[] newCentroids = centroidsInit(conf, hdfs, INPUT, OUTPUT + "/centroids.init", K);
+                /*new Point[]{
+                new Point(new double[]{-90.288,-193.43,-145.01,79.46,160.68,-93.544,205.47,-175.79,151.11,117.69,-133.95,52.313}),
+                new Point(new double[]{9.4601,66.414,89.96,43.682,163.31,-1.8947,68.156,-167.06,-18.935,111.58,149.43,-39.676}),
+                new Point(new double[]{-59.114,-192.03,-144.55,68.621,131.91,-80.578,199.91,-168.95,138.94,117.16,-147.6,54.316})
+        };*/
         Point[] oldCentroids;
 
         long time_start = System.currentTimeMillis();
