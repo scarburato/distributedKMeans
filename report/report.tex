@@ -112,7 +112,7 @@ If the data are split equally among the nodes and the random numbers generator g
 Let $n = |D|$ the number of samples, $N$ the number of nodes and $k$ the number of samples to draw; then the time complexity is
 
 \[
-T \in O \left(\dfrac{n}{N} \cdot \left(1 + \log(k)\right)\right)
+T \in \mathcal{O} \left(\dfrac{n}{N} \cdot \left(1 + \log(k)\right) + k \right)
 \]
 
 and the space complexity is
@@ -122,7 +122,7 @@ S \in \Theta \left(k\right)
 \]
 
 if a sorted data structure is used to store only the first $k$ smallest labels
-and their associated data.
+and their associated data. The I/O complexity is optimal as we perform only linear scans of the file.
 
 \begin{algorithm}[H]
 	\caption{Random select}\label{alg:random_map}
