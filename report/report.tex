@@ -164,6 +164,30 @@ and their associated data. The I/O complexity is optimal as we perform only line
 	\end{algorithmic}
 \end{algorithm}
 
+\begin{figure}[H]
+	\centering
+	\caption{Example of generation with $k=4$}
+	\label{fig:cluster-example}
+	\begin{tikzpicture}
+		\begin{axis}[
+				width=.8\linewidth,
+				title={Example of syntethic clusters ($k=4$)}
+			]
+			\addplot table [only marks, col sep=comma] {ex0/cluster0.csv};
+			\addplot table [only marks, col sep=comma] {ex0/cluster1.csv};
+			\addplot table [only marks, col sep=comma] {ex0/cluster2.csv};
+			\addplot table [only marks, col sep=comma] {ex0/cluster3.csv};
+			
+			%\addplot[only marks, mark=*, mark options={fill=green}, mark size=7pt] coordinates {
+			%	(7.80555,-19.0115)
+			%	(77.8431,77.9533)
+			%	(-46.1433,93.5352)
+			%	(156.583,156.934)	
+			%};
+		\end{axis}
+	\end{tikzpicture}
+\end{figure}
+
 \chapter{K-means}
 
 	The following two classes, \texttt{Point} and \texttt{AverageBuilder}, are utilized to facilitate the required computations to implement the K-means algorithm using the MapReduce paradigm.
@@ -270,6 +294,9 @@ different sizes, for comparison's sake it is necessary for the clusters' shapes
 and centroids to be the same every time the program is ran; to achieve this it 
 uses the same  \emph{seed} for its pseudo-random number generator used to 
 initialize its random variables' parameters.
+
+\paragraph{}
+We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 
 \section{Benchmark}
 
