@@ -19,6 +19,7 @@
 \usepackage{algorithmicx}
 \usepackage[ruled]{algorithm}
 \usepackage{algpseudocode}
+\usepackage{pgfplots}
 
 \usepackage{tikz}
 
@@ -243,5 +244,26 @@ The map phase of the k-means algorithm is responsible for assigning each data po
 
 \chapter{Results}
 
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[
+				xmode=log,
+				ymode=log,
+				ymin=300,
+				ymax=20000,
+				xlabel={$|D|$},
+				ylabel={$t [\text{s}]$}
+				%log ticks with fixed point,
+				% for log axes, x filter operates on LOGS.
+				% and log(x * 1000) = log(x) + log(1000):
+				%x filter/.code=\pgfmathparse{#1 + 6.90775527898214},
+			]
+			\addplot table [x=size, y=avg, col sep=comma] {../bench/k3mean.csv};
+			\addplot +[mark=none] coordinates {(3500000, 300) (3500000, 20000)};
+		\end{axis}
+	\end{tikzpicture}
+	\caption{$k=3$, red line when $|F| \ge 128\text{MB}$}
+\end{figure}
 
 \end{document}          
