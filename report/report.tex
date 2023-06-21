@@ -223,6 +223,36 @@ and their associated data. The I/O complexity is optimal as we perform only line
 \subsection{Mapper}
 The map phase of the k-means algorithm is responsible for assigning each data point to the nearest cluster center. It involves calculating the distance between the input data point and each centroid, where all centroids are stored globally and accessible to every mapper. The map phase keeps track of the index of the cluster center that has the minimum distance to the data point. The output of the map function is a key-value pair, where the key represents the index of the nearest cluster center, and the value remains as the data point itself.
 
+\paragraph{Input}
+The KMeansMapper algorithm takes three parameters as input:
+\begin{itemize}
+	\item \textit{key}: The key represents the identifier of the data point.
+	\item \textit{p}: The data point to be assigned to a centroid.
+	\item \textit{centroids}: A list of centroids representing the current centers of the clusters.
+\end{itemize}
+
+
+\paragraph{Output}
+The algorithm produces a single output, which is a tuple \((\text{closestCentroid}, p)\). The \textit{closestCentroid} is the index of the centroid that is closest to the data point \textit{p}. The \textit{p} is the original data point.
+
+\paragraph{Example Usage}
+Suppose we have a K-means clustering problem with three clusters and the following data point and centroids:
+
+Data point: \textit{p} = [1, 2, 3]
+
+Centroids: [ [4, 5, 6], [7, 8, 9], [10, 11, 12] ]
+
+Applying the KMeansMapper algorithm to the data point and centroids, we get the following result:
+
+\texttt{Map(key, p, centroids) -> (1, [1, 2, 3])}
+
+This means that the data point \textit{p} is closest to the centroid at index 1 ([7, 8, 9]).
+
+\paragraph{Complexity Analysis}
+The time complexity of the KMeansMapper algorithm depends on the number of centroids in the \textit{centroids} list. Let's denote this number as \textit{k}. In each iteration of the for loop, the algorithm calculates the distance between the data point \textit{p} and a centroid, resulting in a time complexity of \(O(k)\). Overall, the time complexity of the algorithm is \(O(k)\), where \(k\) is the number of centroids.
+
+The space complexity of the algorithm is \(O(1)\) since it uses a constant amount of additional space to store the variables \textit{minDistance}, \textit{closestCentroid}, and the output tuple.
+
 
 	\begin{algorithm}
 		\caption{KMeansMapper}
@@ -249,7 +279,48 @@ The map phase of the k-means algorithm is responsible for assigning each data po
 
 \subsection{Reducer}
 
-\begin{algorithm}
+During this stage, the reduce function calculates the new centers for each cluster by averaging the data points assigned to the clusters.. It is worth mentioning that our implementation of the combiner and reducer is identical because we chose to implement the combiner in a conventional manner. This means that the combiner acts as a local copy of the reducer and its role is to process the output data of a single mapper, thereby reducing the computational burden on the reducer.
+
+\paragraph{Input}
+
+The \textbf{KMeansReducer} algorithm takes two parameters as input:
+\begin{itemize}
+	\item \textit{key}: The key represents the cluster identifier or label.
+	\item \textit{values}: A list of values corresponding to the data points assigned to the cluster represented by the key.
+\end{itemize}
+
+\paragraph{Output}
+
+The algorithm produces a single output, which is a tuple \textit{(key, new\_center)}. The \textit{key} remains the same as the input key, representing the cluster identifier. The \textit{new\_center} is the calculated new center for the cluster based on the assigned data points.
+
+\paragraph{Example Usage}
+
+Suppose we have a K-means clustering problem with three clusters labeled as A, B, and C. After the initial assignment of data points to clusters, we have the following data points assigned to each cluster:
+
+\begin{itemize}
+	\item Cluster A: [3, 4, 5]
+	\item Cluster B: [1, 2]
+	\item Cluster C: [6, 7, 8, 9]
+\end{itemize}
+
+Applying the \textbf{KMeansReducer} algorithm to each cluster, we get the following new centers:
+
+\begin{itemize}
+	\item \textbf{reduce}("A", [3, 4, 5]) $\rightarrow$ ("A", 4)
+	\item \textbf{reduce}("B", [1, 2]) $\rightarrow$ ("B", 1.5)
+	\item \textbf{reduce}("C", [6, 7, 8, 9]) $\rightarrow$ ("C", 7.5)
+\end{itemize}
+
+The new centers can then be used in the next iteration of the K-means algorithm to update the cluster assignments based on the proximity to these centers.
+
+\paragraph{Complexity Analysis}
+
+The time complexity of the \textbf{KMeansReducer} algorithm depends on the size of the $values$ list, which represents the number of data points assigned to a particular cluster. Assuming the number of data points assigned to each cluster is approximately the same, the time complexity can be considered linear, $O(n)$, where $n$ is the number of data points assigned to the cluster.
+
+The space complexity of the algorithm is $O(1)$ since it uses a constant amount of additional space to store the variables $sum$, $cardinality$, and the output tuple.
+
+
+\begin{algorithm}[H]
 	\caption{KMeansReducer}\label{algo:kmeans-reducer}
 	\begin{algorithmic}[1]
 		\Procedure{reduce}{key, values}
