@@ -257,7 +257,7 @@ probability in its domain.
 For each generated centroid $c_i$, we generate a \emph{Gaussian standard 
 vector} $X_i \sim \mathcal{N}_d(\mu, \Sigma)$ with mean $\mu = c_i$ and the 
 variance of each component 
-$\sigma_i$ is 
+$\sigma_{jj}$ with $j = 1, \dots, d$ is 
 drawn from a random variable with uniform distribution of probability, this 
 allows the program to generate ellipsoidal clusters. Finally, the program 
 iterates through all centroids' random vectors $X_0, ..., X_k$ until it 
