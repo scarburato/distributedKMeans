@@ -46,7 +46,7 @@ int main(int argl, char *argv[])
 	std::random_device r;
 
 	// Generators
-	std::mt19937 gen_cen(0xcafebabe + 0xdeadbeaf + 7 - 1);
+	std::mt19937 gen_cen(argl >= 4 ? std::stoull(argv[3]) : 0xcafebabe + 0xdeadbeaf + 7);
 	std::mt19937 gen(r());
 	std::uniform_real_distribution<> centroids_random_variable(-150.0, +200.0);
 	std::uniform_real_distribution<> noise_g(-150.0-30.0, 200.0+30.0);
