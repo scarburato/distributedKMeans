@@ -35,5 +35,9 @@ public class KMeansOptions extends Options {
         Option iterations = new Option("I", "maxiterations", true, "Maximum iterations");
         iterations.setRequired(false);
         addOption(iterations);
+
+        Option centroids = new Option("c", "centroids", true, "Provide k starting centroids separated by `;`");
+        centroids.setRequired(false);
+        addOption(centroids);
     }
 }

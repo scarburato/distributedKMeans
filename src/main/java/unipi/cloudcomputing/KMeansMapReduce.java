@@ -109,12 +109,17 @@ public class KMeansMapReduce {
 
         int iterations = 0;
 
-        Point[] newCentroids = centroidsInit(conf, hdfs, INPUT, OUTPUT + "/centroids.init", K);
-                /*new Point[]{
-                new Point(new double[]{-90.288,-193.43,-145.01,79.46,160.68,-93.544,205.47,-175.79,151.11,117.69,-133.95,52.313}),
-                new Point(new double[]{9.4601,66.414,89.96,43.682,163.31,-1.8947,68.156,-167.06,-18.935,111.58,149.43,-39.676}),
-                new Point(new double[]{-59.114,-192.03,-144.55,68.621,131.91,-80.578,199.91,-168.95,138.94,117.16,-147.6,54.316})
-        };*/
+        Point[] newCentroids;
+        if(cmd.hasOption("centroids")) {
+            newCentroids = Arrays.stream(cmd.getOptionValue("centroids")
+                    .split(";"))
+                    .map(Point::fromString)
+                    .toArray(Point[]::new);
+
+            assert newCentroids.length == K;
+        } else
+            newCentroids =  centroidsInit(conf, hdfs, INPUT, OUTPUT + "/centroids.init", K);
+
         Point[] oldCentroids;
 
         System.out.println("In procinto d'avviare il k-means, la procedura à scelto come punti d'avvio:");
