@@ -190,152 +190,283 @@ and their associated data. The I/O complexity is optimal as we perform only line
 
 \chapter{K-means}
 
-	The following two classes, \texttt{Point} and \texttt{AverageBuilder}, are utilized to facilitate the required computations to implement the K-means algorithm using the MapReduce paradigm.
+\section{General idea}
 
-	\section{\texttt{Point} Class}
+\subsection{Average builder}
+\label{avgBuild}
 
-	The \texttt{Point} class represents a point in a $d$-dimensional space. It 
-	offers the following functionalities:
+Let us define an \textbf{AverageBuilder} as a tuple that contains information 
+necessary to compute an average:
 
-	\begin{itemize}
-		\item Setting the components of a point, performing mathematical operations (addition, subtraction, scalar multiplication), calculating distance, and converting to/from string representation.
-		\item Implementation of the \texttt{Writable} interface to support serialization and deserialization.
+\begin{align}
+	\label{def:avgBuild}
+& B = \left\langle \sum_{i = 1}^{S} p_i, k\right\rangle =
+\left\langle \Sigma, k\right\rangle
+&
+p_i \in \mathbb{R}^d \land k \in \mathbb{N}
+\end{align}
 
-	\end{itemize}
+in this way we can define a function to compute the average:
 
-	\section{\texttt{AverageBuilder} Class}
+\begin{equation}
+\label{computeAvg}
+\text{\textsc{ComputeAverage}}(B) = \dfrac{\sum_{i = 1}^{k} p_i}{k}
+\end{equation}
 
-	The \texttt{AverageBuilder} class aids in computing the average of multiple points. It provides the following features:
+and another to merge two objects:
 
-	\begin{itemize}
-		\item Storage of the sum of points and their cardinality (number of points).
-		\item Methods to add points to the computation, either individually or by combining with another \texttt{AverageBuilder} object.
-		\item Computation and retrieval of the average point.
-		\item Implementation of the \texttt{Writable} interface for serialization and deserialization.
-	\end{itemize}
+\begin{equation}
+\label{mergeAvg}
+\text{\textsc{MergeAverage}}(B_a, B_b) =
+\left\langle \Sigma_a + \Sigma_b, k_a + k_b\right\rangle
+\end{equation}
 
-	The \texttt{Point} class handles point-related operations in the Mapper and Reduce classes, while the \texttt{AverageBuilder} class facilitates efficient computation of the average of multiple points used in the combiner and reducer.
-
-
-
-\section{Pseudo-code}
+the latter will be useful to gradually \textit{build} an average from a stream 
+of 
+data points, like in combiner and reducer.
 
 \subsection{Mapper}
-The map phase of the k-means algorithm is responsible for assigning each data point to the nearest cluster center. It involves calculating the distance between the input data point and each centroid, where all centroids are stored globally and accessible to every mapper. The map phase keeps track of the index of the cluster center that has the minimum distance to the data point. The output of the map function is a key-value pair, where the key represents the index of the nearest cluster center, and the value remains as the data point itself.
+The mapper's role is to assign each point $p \in D$ to the closest centroid 
+$c_t \in C$, its output is a key-value pair, where the key represents the 
+index of the nearest centroid $t$, and the value is an \emph{AverageBuilder} 
+with just one point store in it.
 
 \paragraph{Input}
 The KMeansMapper algorithm takes three parameters as input:
+
 \begin{itemize}
-	\item \textit{key}: The key represents the identifier of the data point.
-	\item \textit{p}: The data point to be assigned to a centroid.
-	\item \textit{centroids}: A list of centroids representing the current centers of the clusters.
+	\item $k$: The key represents the identifier of the data point.
+	\item $p \in \mathbb{R}^d$: The data point to be assigned to a centroid.
+	\item $C = \left\{c_1, \dots, c_k\right\}$ : A list of points that are 
+	clusters' centroids.
 \end{itemize}
 
-
 \paragraph{Output}
-The algorithm produces a single output, which is a tuple \((\text{closestCentroid}, p)\). The \textit{closestCentroid} is the index of the centroid that is closest to the data point \textit{p}. The \textit{p} is the original data point.
+The mapper's output is in the form $\left\langle t, \left\langle 
+p,1\right\rangle \right\rangle$, where $t$ is the closest centroid's index.
 
 \paragraph{Example Usage}
 Suppose we have a K-means clustering problem with three clusters and the following data point and centroids:
 
-Data point: \textit{p} = [1, 2, 3]
-
-Centroids: [ [4, 5, 6], [7, 8, 9], [10, 11, 12] ]
+\begin{itemize}
+	\item	Data point: \textit{p} = $(1, 2, 3)$
+	
+	\item Centroids: $C =\left\{, (7, 8, 9), (10, 11, 12)\right\} $
+\end{itemize}
 
 Applying the KMeansMapper algorithm to the data point and centroids, we get the following result:
 
-\texttt{Map(key, p, centroids) -> (1, [1, 2, 3])}
+\[
+\textsc{Mapper}(k, p, C) \longrightarrow
+\left\langle 1, \left\langle (1, 2, 3),1\right\rangle \right\rangle
+\]
 
-This means that the data point \textit{p} is closest to the centroid at index 1 ([7, 8, 9]).
+This means that the data point $p$ is closer to the centroid of index 1 $(4, 5, 
+6)$ and such as it belong to that centroid's cluster.
 
 \paragraph{Complexity Analysis}
-The time complexity of the KMeansMapper algorithm depends on the number of centroids in the \textit{centroids} list. Let's denote this number as \textit{k}. In each iteration of the for loop, the algorithm calculates the distance between the data point \textit{p} and a centroid, resulting in a time complexity of \(O(k)\). Overall, the time complexity of the algorithm is \(O(k)\), where \(k\) is the number of centroids.
+The time complexity of the KMeansMapper algorithm depends on the number of 
+centroids in the \textit{centroids} list. Let's denote this number as 
+\textit{k}.
+A call of the procedure requires a complete iteration of the $C$ set, thus 
+performing $\Theta(k)$ iterations, each iterations requires the computation of 
+the expression $|p - c_i|$ that it's done with $\Theta(d)$ operations; thus 
+achieving a total time complexity of
 
-The space complexity of the algorithm is \(O(1)\) since it uses a constant amount of additional space to store the variables \textit{minDistance}, \textit{closestCentroid}, and the output tuple.
+\[
+T_\textsc{Mapper} \in \Theta \left(n \cdot d\right)
+\]
 
+The space complexity of the algorithm is $\Theta(d)$ since it needs to store an 
+additional vector to keep track of the nearest centroid while iterating through 
+$C$.
 
-	\begin{algorithm}
-		\caption{KMeansMapper}
-		\begin{algorithmic}[1]
+\[
+S_\textsc{Mapper} \in \Theta \left(d\right)
+\]
 
+\subsection{Combiner and reducer}
+The Reducer's role is to compute a new set of cluster $C'$, this is done by 
+computing the centroid's cluster's new central point by averaging all point 
+within. In order to reduce the I/O complexity of the MapReduce program, we have 
+to introduce a Combiner procedure that reduces the number of element to 
+transmit over the network.
 
-			\Procedure{Map}{key, $p$, centroids}
-			\State minDistance $\gets \infty$
-			\State closestCentroid $\gets -1$
-			\For{$i \gets 0$ \textbf{to} length(centroids)-1}
-			\State distance $\gets$ calculateDistance(centroids[$i$], $p$)
-			\If{distance $\geq$ minDistance}
-			\State \textbf{continue}
-			\EndIf
-			\State closestCentroid $\gets i$
-			\State minDistance $\gets$ distance
-			\EndFor
-			\State \textbf{return} (closestCentroid, $p$)
+As stated before both procedures operate on \textsc{AverageBuilder} objects.
 
-			\EndProcedure
-		\end{algorithmic}
-	\end{algorithm}
-
-
-\subsection{Reducer}
-
-During this stage, the reduce function calculates the new centers for each cluster by averaging the data points assigned to the clusters.. It is worth mentioning that our implementation of the combiner and reducer is identical because we chose to implement the combiner in a conventional manner. This means that the combiner acts as a local copy of the reducer and its role is to process the output data of a single mapper, thereby reducing the computational burden on the reducer.
+Fundamentally the reducer's and combiner's implementations are almost the same, 
+the only difference is that the reducer computes the average of the points by 
+performing the operation \textsc{ComputeAverage} as described in Formula 
+\ref{computeAvg}.
 
 \paragraph{Input}
 
 The \textbf{KMeansReducer} algorithm takes two parameters as input:
 \begin{itemize}
-	\item \textit{key}: The key represents the cluster identifier or label.
-	\item \textit{values}: A list of values corresponding to the data points assigned to the cluster represented by the key.
+	\item \textit{k}: The cluster's index
+	\item \textit{S}: A stream of \textsc{AverageBuilder}s containing 
+	information regarding the cluster's points
 \end{itemize}
 
 \paragraph{Output}
 
-The algorithm produces a single output, which is a tuple \textit{(key, new\_center)}. The \textit{key} remains the same as the input key, representing the cluster identifier. The \textit{new\_center} is the calculated new center for the cluster based on the assigned data points.
+The Combiner's output is the same as the mapper's. The Combiner's output is a 
+tuple $\left\langle k, {c'}_k \right\rangle$, the second component represents 
+the new cluster's centroid for the next iteration of \emph{K-mean}, if the exit 
+condition is not met.
 
-\paragraph{Example Usage}
+%\paragraph{Example Usage}
+%
+%Suppose we have a K-means clustering problem with three clusters labeled as A, 
+%B, and C. After the initial assignment of data points to clusters, we have the 
+%following data points assigned to each cluster:
 
-Suppose we have a K-means clustering problem with three clusters labeled as A, B, and C. After the initial assignment of data points to clusters, we have the following data points assigned to each cluster:
+%\begin{itemize}
+%	\item Cluster A: $(3, 4, 5)$
+%	\item Cluster B: [1, 2]
+%	\item Cluster C: [6, 7, 8, 9]
+%\end{itemize}
 
-\begin{itemize}
-	\item Cluster A: [3, 4, 5]
-	\item Cluster B: [1, 2]
-	\item Cluster C: [6, 7, 8, 9]
-\end{itemize}
+%Applying the \textbf{KMeansReducer} algorithm to each cluster, we get the 
+%following new centers:
 
-Applying the \textbf{KMeansReducer} algorithm to each cluster, we get the following new centers:
-
-\begin{itemize}
-	\item \textbf{reduce}("A", [3, 4, 5]) $\rightarrow$ ("A", 4)
-	\item \textbf{reduce}("B", [1, 2]) $\rightarrow$ ("B", 1.5)
-	\item \textbf{reduce}("C", [6, 7, 8, 9]) $\rightarrow$ ("C", 7.5)
-\end{itemize}
-
-The new centers can then be used in the next iteration of the K-means algorithm to update the cluster assignments based on the proximity to these centers.
+%\begin{itemize}
+%	\item \textbf{reduce}("A", [3, 4, 5]) $\rightarrow$ ("A", 4)
+%	\item \textbf{reduce}("B", [1, 2]) $\rightarrow$ ("B", 1.5)
+%	\item \textbf{reduce}("C", [6, 7, 8, 9]) $\rightarrow$ ("C", 7.5)
+%\end{itemize}
+%
+%The new centers can then be used in the next iteration of the K-means 
+%algorithm to update the cluster assignments based on the proximity to these 
+%centers.
 
 \paragraph{Complexity Analysis}
 
-The time complexity of the \textbf{KMeansReducer} algorithm depends on the size of the $values$ list, which represents the number of data points assigned to a particular cluster. Assuming the number of data points assigned to each cluster is approximately the same, the time complexity can be considered linear, $O(n)$, where $n$ is the number of data points assigned to the cluster.
+\[
+T_\textsc{Combiner} \in \mathcal{O}(n \cdot d)
+\]
 
-The space complexity of the algorithm is $O(1)$ since it uses a constant amount of additional space to store the variables $sum$, $cardinality$, and the output tuple.
+%The time complexity of the \textbf{KMeansReducer} algorithm depends on the 
+%size of the $values$ list, which represents the number of data points assigned 
+%to a particular cluster. Assuming the number of data points assigned to each 
+%cluster is approximately the same, the time complexity can be considered 
+%linear, $O(n)$, where $n$ is the number of data points assigned to the cluster.
 
+\[
+S_\textsc{Combiner} \in \Theta(d)
+\]
 
-\begin{algorithm}[H]
-	\caption{KMeansReducer}\label{algo:kmeans-reducer}
+The same figures applies to the Combiner.
+
+%\subsection{General complexity}
+
+\begin{algorithm}
+	\caption{KMeans for MapReduce}\label{algo:kmeans-reducer}
 	\begin{algorithmic}[1]
-		\Procedure{reduce}{key, values}
-		\State sum $\gets$ 0
-		\State cardinality $\gets$ 0
-		\For{\textbf{each} value \textbf{in} values}
-		\State sum $\gets$ sum + value
-		\State cardinality $\gets$ cardinality + 1
+		\Require $B = \left\langle \Sigma, k\right\rangle$ to be an 
+		\textsc{AverageBuilder}, as described in Section \ref{avgBuild}
+		
+		\Require $k \in \mathbb{N}^+$ to be the number of clusters to generate
+		
+		\Require $C = \{c_1, \dots, c_k\}$ to be the centroids' set
+		
+		\Procedure{ComputeAverage}{$B$} \Comment{The same as \ref{computeAvg}}
+			\State \Return $\dfrac{1}{k}\sum_{i = 1}^{k} p_i$
+		\EndProcedure
+		
+		\vspace{.25cm}
+		
+		\Procedure{MergeAverage}{$B_a$, $B_b$} \Comment{The same as 
+		\ref{mergeAvg}}
+			\State \Return $\left\langle \Sigma_a + \Sigma_b, k_a + k_b\right\rangle$
+		\EndProcedure
+		
+		\vspace{.25cm}
+		
+		\Procedure{Mapper}{$k$, $p$, $C$}
+			\State minDistance $\gets +\infty$
+			\State closestCentroid $\gets -1$
+			\ForAll{$c_i \in C$}
+				\Comment{Assign $p$ to the closest centroid}
+				\State $d \gets \Call{Distance}{c_i, p}$
+				\If{$d > $ minDistance}
+					\State closestCentroid $\gets i$
+					\State minDistance $\gets d$
+				\EndIf
+			\EndFor
+			
+			\State $B \gets \left\langle p, 1\right\rangle$ \Comment{An 
+			AverageBuilder object with just $p$ inside}
+			
+			\State \Return $\left\langle \text{closestCentroid}, B\right\rangle$
+				
+		\EndProcedure
+		
+		\vspace{.25cm}
+		
+		\Procedure{Combiner}{$k$, $S$}
+		\State $B \gets \left\langle 0,0 \right\rangle$
+			\Comment {Empty average builder}
+		
+		\ForAll{$B' \in S$}
+			\State $B \gets \Call{MergeAverage}{B, B'}$
 		\EndFor
 
-		\State new\_center $\gets$  $\dfrac{sum}{cardinality}$
-		\State \textbf{return} (key, new\_center)
+		\State \Return $\left\langle k, B\right\rangle$
+			\Comment{Returns an \texttt{AverageBuilder}}
+		\EndProcedure
+		
+		\vspace{.25cm}
+		
+		\Procedure{Reducer}{$k$, $S$}
+		\State $B \gets \Call{Combiner}{k,S}$
+			\Comment{To merge the builders we re-use the combiner}
+		\State \Return \Call{ComputeAverage}{B}
+			\Comment{New cluster's centroid}
 		\EndProcedure
 	\end{algorithmic}
 \end{algorithm}
+
+\section{Implementation}
+
+Let's take a look at the main classes and data types we implemented to realize 
+our \emph{MapReduce} application on Hadoop.
+
+\paragraph{\texttt{Point} Class}
+
+The \texttt{Point} class represents a point in a $d$-dimensional space:
+
+\[
+p = (p_1, \dots, p_d)
+\]
+
+It provides the following functionalities:
+
+\begin{itemize}
+	\item Setting the components of a point, performing mathematical operations 
+	(addition, subtraction, scalar multiplication), calculating distance, and 
+	converting to/from string representation
+	
+	\item Implementation of the \texttt{Writable} interface to support 
+	serialization and de-serialization
+	
+\end{itemize}
+
+\paragraph{\texttt{AverageBuilder} Class}
+It provides the following functionalities:
+
+\begin{itemize}
+	\item Storage of the sum of points and their cardinality (number of points).
+	\item Methods to add points to the computation, either individually or by 
+	combining with another \texttt{AverageBuilder} object
+	\item Computation and retrieval of the average point
+	\item Implementation of the \texttt{Writable} interface for serialization 
+	and de-serialization
+\end{itemize}
+
+The \texttt{Point} class handles point-related operations in the Mapper and 
+Reduce classes, while the \texttt{AverageBuilder} class facilitates efficient 
+computation of the average of multiple points used in the combiner and reducer.
 
 \chapter{Results}
 
@@ -381,15 +512,25 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 			ymax=20000,
 			xlabel={$n$},
 			ylabel={$t [\text{s}]$}
-			%log ticks with fixed point,
-			% for log axes, x filter operates on LOGS.
-			% and log(x * 1000) = log(x) + log(1000):
-			%x filter/.code=\pgfmathparse{#1 + 6.90775527898214},
 			]
 			\addplot table [x=size, y=avg, col sep=comma] {../bench/k3mean.csv};
 			\addplot +[mark=none] coordinates {(3500000, 300) (3500000, 20000)};
 		\end{axis}
 	\end{tikzpicture}
+	\begin{tikzpicture}
+	\begin{axis}[
+		xmode=log,
+		ymode=log,
+		%ymin=300,
+		%ymax=20000,
+		xlabel={$n$},
+		ylabel={$t [\text{s}]$}
+		]
+		\addplot table [x=size, y=time, col sep=comma] {../bench/k3d12bis.csv};
+		\addplot table [x=size, y=time, col sep=comma] {../bench/k3d12.min.csv};
+		%\addplot +[mark=none] coordinates {(3500000, 300) (3500000, 20000)};
+	\end{axis}
+\end{tikzpicture}
 	\caption{$k=3$, $d=6$, red line when $|F| \ge 128\text{MB}$}
 \end{figure}
 
