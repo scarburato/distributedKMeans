@@ -62,11 +62,11 @@ minimum height=3em, minimum width=6em]
 	Artificial Intelligence and Data Engineering \\
 	Cloud Computing \\
 	\vspace{2cm}
-	{\huge \textit{K-Means} on MapReduce}
+	{\huge \textsc{K-means} on MapReduce}
 }
 
 \author{
-	The \textbf{Don Matteo} group: \\
+	The \textsc{\textbf{Don Matteo}} group: \\
 	\vspace{.3cm} \\
 	\begin{tabular}{lr}
 		Dario Pagani & 585281 \\
@@ -88,14 +88,14 @@ minimum height=3em, minimum width=6em]
 To run the \textit{K-means} algorithm is necessary to select $k$ initial centroids, they can either be selected statically by the user --- that is as an algorithm's parameter --- or stochastically from the data; in the latter case they could either be drawn randomly with uniform probability or by employing a probability function that changes the likelihood to draw an element accordingly to certain metrics. For simplicity's sake our implementation chooses the $k$ initial point with equal probability.
 
 \paragraph{}
-We used a \textit{Map-Reduce} procedure to draw those those $k$ point
+We used a \textit{Map-Reduce} procedure to draw those $k$ points.
 
 \section{Implementation}
 
 \paragraph{Key}
 This \textit{MapReduce} procedure doesn't use a key, so only one reducer will
 be spawned by the framework, in our \textit{Hadoop} implementation we used the
-\texttt{NullWritable} data-type as output key to reduce traffic.
+\texttt{NullWritable} data-type as output key to reduce traffic, as such object serializes to zero bytes.
 
 \paragraph{Mapper}
 The mapper assigns a random label to each data point, this value is not be confused with the \textit{MapReduce}'s key; finally it emits the tuple made of the label and the data point.
@@ -109,10 +109,11 @@ operations as the combiner, emitting $k$ values.
 If the data are split equally among the nodes and the random numbers generator generates all numbers with equal probability, then all dataset's samples have circa equal probability to be drawn.
 
 \paragraph{Complexity}
-Let $n = |D|$ the number of samples, $N$ the number of nodes and $k$ the number of samples to draw; then the time complexity is
+Let $n = |D|$ be the number of samples, $N$ the number of mapper tasks and $k$ 
+the number of samples to draw; then the time complexity is
 
 \[
-T \in \mathcal{O} \left(\dfrac{n}{N} \cdot \left(1 + \log(k)\right) + k \right)
+T \in \mathcal{O} \left(\dfrac{n}{N} \cdot \left(1 + \log(k)\right) + N\cdot k \right)
 \]
 
 and the space complexity is
@@ -171,7 +172,7 @@ and their associated data. The I/O complexity is optimal as we perform only line
 	\begin{tikzpicture}
 		\begin{axis}[
 				width=.8\linewidth,
-				title={Example of syntethic clusters ($k=4$)}
+				title={Example of syntethic clusters ($k=4$), we generate also noise but it was ommited}
 			]
 			\addplot table [only marks, col sep=comma] {ex0/cluster0.csv};
 			\addplot table [only marks, col sep=comma] {ex0/cluster1.csv};
@@ -192,6 +193,22 @@ and their associated data. The I/O complexity is optimal as we perform only line
 
 \section{General idea}
 
+Algorithm \ref{algo:kmeans-reducer} describes how an iteration of K-means is 
+performed, 
+several iterations are performed until the exit condition is reached. An 
+iteration starts with a set of clusters' centroids $C$ and at its end produces 
+a new set $C'$, the procedure is said to have converged when:
+
+\begin{equation}
+	\forall i \in \left\{1, \cdots, k\right\} \hspace{1cm} |c_i - {c'}_i| < 
+	\epsilon
+\end{equation}
+
+since --- if bad start centroids were selected --- K-means may take a large 
+number of 
+iterations to converge, a maximum number of iterations is set as parameter of 
+the problem.
+
 \subsection{Average builder}
 \label{avgBuild}
 
@@ -200,7 +217,7 @@ necessary to compute an average:
 
 \begin{align}
 	\label{def:avgBuild}
-& B = \left\langle \sum_{i = 1}^{S} p_i, k\right\rangle =
+& B = \left\langle \sum_{i = 1}^{k} p_i, k\right\rangle =
 \left\langle \Sigma, k\right\rangle
 &
 p_i \in \mathbb{R}^d \land k \in \mathbb{N}
@@ -210,7 +227,8 @@ in this way we can define a function to compute the average:
 
 \begin{equation}
 \label{computeAvg}
-\text{\textsc{ComputeAverage}}(B) = \dfrac{\sum_{i = 1}^{k} p_i}{k}
+\text{\textsc{ComputeAverage}}(B) = \dfrac{\Sigma}{k}
+= \dfrac{1}{k}\cdot\sum_{i = 1}^{k} p_i
 \end{equation}
 
 and another to merge two objects:
@@ -229,16 +247,16 @@ data points, like in combiner and reducer.
 The mapper's role is to assign each point $p \in D$ to the closest centroid 
 $c_t \in C$, its output is a key-value pair, where the key represents the 
 index of the nearest centroid $t$, and the value is an \emph{AverageBuilder} 
-with just one point store in it.
+with just one point stored in it.
 
 \paragraph{Input}
 The KMeansMapper algorithm takes three parameters as input:
 
 \begin{itemize}
-	\item $k$: The key represents the identifier of the data point.
-	\item $p \in \mathbb{R}^d$: The data point to be assigned to a centroid.
+	\item $k$: The key represents the identifier of the data point
+	\item $p \in \mathbb{R}^d$: The data point to be assigned to a centroid
 	\item $C = \left\{c_1, \dots, c_k\right\}$ : A list of points that are 
-	clusters' centroids.
+	clusters' centroids
 \end{itemize}
 
 \paragraph{Output}
@@ -251,7 +269,7 @@ Suppose we have a K-means clustering problem with three clusters and the followi
 \begin{itemize}
 	\item	Data point: \textit{p} = $(1, 2, 3)$
 	
-	\item Centroids: $C =\left\{, (7, 8, 9), (10, 11, 12)\right\} $
+	\item Centroids: $C =\left\{(4,5,6), (7, 8, 9), (10, 11, 12)\right\} $
 \end{itemize}
 
 Applying the KMeansMapper algorithm to the data point and centroids, we get the following result:
@@ -266,15 +284,15 @@ This means that the data point $p$ is closer to the centroid of index 1 $(4, 5,
 
 \paragraph{Complexity Analysis}
 The time complexity of the KMeansMapper algorithm depends on the number of 
-centroids in the \textit{centroids} list. Let's denote this number as 
+centroids in the \textit{centroids}' list, let's denote this number as 
 \textit{k}.
-A call of the procedure requires a complete iteration of the $C$ set, thus 
-performing $\Theta(k)$ iterations, each iterations requires the computation of 
+A call to the procedure requires a complete visit of the $C$ set, thus 
+performing $\Theta(k)$ iterations, each iteration requires the computation of 
 the expression $|p - c_i|$ that it's done with $\Theta(d)$ operations; thus 
 achieving a total time complexity of
 
 \[
-T_\textsc{Mapper} \in \Theta \left(n \cdot d\right)
+T_\textsc{Mapper} \in \Theta \left(k \cdot d\right)
 \]
 
 The space complexity of the algorithm is $\Theta(d)$ since it needs to store an 
@@ -286,8 +304,7 @@ S_\textsc{Mapper} \in \Theta \left(d\right)
 \]
 
 \subsection{Combiner and reducer}
-The Reducer's role is to compute a new set of cluster $C'$, this is done by 
-computing the centroid's cluster's new central point by averaging all point 
+The Reducer's role is to compute a new set of clusters $C'$, this is done by spawning a Reducer for each cluster $1, \dots, k$ and each Reducer task computes the centroid's cluster's new central point by averaging all point 
 within. In order to reduce the I/O complexity of the MapReduce program, we have 
 to introduce a Combiner procedure that reduces the number of element to 
 transmit over the network.
@@ -304,7 +321,7 @@ performing the operation \textsc{ComputeAverage} as described in Formula
 The \textbf{KMeansReducer} algorithm takes two parameters as input:
 \begin{itemize}
 	\item \textit{k}: The cluster's index
-	\item \textit{S}: A stream of \textsc{AverageBuilder}s containing 
+	\item \textit{S}: A stream of \textsc{AverageBuilder}s that contains 
 	information regarding the cluster's points
 \end{itemize}
 
@@ -343,7 +360,7 @@ condition is not met.
 \paragraph{Complexity Analysis}
 
 \[
-T_\textsc{Combiner} \in \mathcal{O}(n \cdot d)
+T_\textsc{Combiner} \in \mathcal{O}\left(\dfrac{n}{N} \cdot d\right)
 \]
 
 %The time complexity of the \textbf{KMeansReducer} algorithm depends on the 
@@ -356,12 +373,21 @@ T_\textsc{Combiner} \in \mathcal{O}(n \cdot d)
 S_\textsc{Combiner} \in \Theta(d)
 \]
 
-The same figures applies to the Combiner.
+The same figure in space complexity applies to the Combiner; while the 
+Reducer's time complexity is:
 
-%\subsection{General complexity}
+\[
+T_\textsc{Reducer} \in \mathcal{O}\left(N \cdot d + d\right) = 
+\mathcal{O}\left(N \cdot d\right)
+\]
+
+as an instance of Reducer will have to merge the averages coming from $N$ 
+Combiner tasks for a certain cluster $c_i$ and as the 
+\textsc{ComputeAverage}'s time complexity is of class $\Theta(d)$.
 
 \begin{algorithm}
-	\caption{KMeans for MapReduce}\label{algo:kmeans-reducer}
+	\caption{KMeans' iteration for MapReduce}
+	\label{algo:kmeans-reducer}
 	\begin{algorithmic}[1]
 		\Require $B = \left\langle \Sigma, k\right\rangle$ to be an 
 		\textsc{AverageBuilder}, as described in Section \ref{avgBuild}
@@ -370,62 +396,106 @@ The same figures applies to the Combiner.
 		
 		\Require $C = \{c_1, \dots, c_k\}$ to be the centroids' set
 		
-		\Procedure{ComputeAverage}{$B$} \Comment{The same as \ref{computeAvg}}
-			\State \Return $\dfrac{1}{k}\sum_{i = 1}^{k} p_i$
+		\Procedure{ComputeAverage}{$B$} \Comment{The same as Equation 
+			\ref{computeAvg}}
+		\State \Return $\dfrac{1}{k}\sum_{i = 1}^{k} p_i$
 		\EndProcedure
 		
 		\vspace{.25cm}
 		
-		\Procedure{MergeAverage}{$B_a$, $B_b$} \Comment{The same as 
-		\ref{mergeAvg}}
-			\State \Return $\left\langle \Sigma_a + \Sigma_b, k_a + k_b\right\rangle$
+		\Procedure{MergeAverage}{$B_a$, $B_b$} \Comment{The same as Equation
+			\ref{mergeAvg}}
+		\State \Return $\left\langle \Sigma_a + \Sigma_b, k_a + 
+		k_b\right\rangle$
 		\EndProcedure
 		
 		\vspace{.25cm}
 		
 		\Procedure{Mapper}{$k$, $p$, $C$}
-			\State minDistance $\gets +\infty$
-			\State closestCentroid $\gets -1$
-			\ForAll{$c_i \in C$}
-				\Comment{Assign $p$ to the closest centroid}
-				\State $d \gets \Call{Distance}{c_i, p}$
-				\If{$d > $ minDistance}
-					\State closestCentroid $\gets i$
-					\State minDistance $\gets d$
-				\EndIf
-			\EndFor
-			
-			\State $B \gets \left\langle p, 1\right\rangle$ \Comment{An 
+		%\State minDistance $\gets +\infty$
+		%\State closestCentroid $\gets -1$
+		%\ForAll{$c_i \in C$}
+		%	\Comment{Assign $p$ to the closest centroid}
+		%	\State $d \gets \Call{Distance}{c_i, p}$
+		%	\If{$d > $ minDistance}
+		%		\State closestCentroid $\gets i$
+		%		\State minDistance $\gets d$
+		%	\EndIf
+		%\EndFor
+		
+		\State closestCentroid $\gets \underset{c \in C}{\mathrm{argmin}} 
+		\left\{\Call{Distance}{c, p}\right\}$ \Comment{$k$ iterations}
+		
+		\State $B \gets \left\langle p, 1\right\rangle$ \Comment{An 
 			AverageBuilder object with just $p$ inside}
-			
-			\State \Return $\left\langle \text{closestCentroid}, B\right\rangle$
-				
+		
+		\State \Return $\left\langle \text{closestCentroid}, B\right\rangle$
+		
 		\EndProcedure
 		
 		\vspace{.25cm}
 		
 		\Procedure{Combiner}{$k$, $S$}
 		\State $B \gets \left\langle 0,0 \right\rangle$
-			\Comment {Empty average builder}
+		\Comment {Empty average builder}
 		
 		\ForAll{$B' \in S$}
-			\State $B \gets \Call{MergeAverage}{B, B'}$
+		\State $B \gets \Call{MergeAverage}{B, B'}$
 		\EndFor
-
+		
 		\State \Return $\left\langle k, B\right\rangle$
-			\Comment{Returns an \texttt{AverageBuilder}}
+		\Comment{Returns an \texttt{AverageBuilder}}
 		\EndProcedure
 		
 		\vspace{.25cm}
 		
 		\Procedure{Reducer}{$k$, $S$}
 		\State $B \gets \Call{Combiner}{k,S}$
-			\Comment{To merge the builders we re-use the combiner}
+		\Comment{To merge the builders we re-use the combiner}
 		\State \Return \Call{ComputeAverage}{B}
-			\Comment{New cluster's centroid}
+		\Comment{New cluster's centroid}
 		\EndProcedure
 	\end{algorithmic}
 \end{algorithm}
+
+\subsection{General complexity of a single iteration}
+
+\paragraph{}
+Hadoop splits the $n$ tuples over $N$ tasks; for each tuple, each node has to 
+perform a call to the Mapper and each Mapper's result is streamed to the 
+Combiner, notice that since the results are streamed to the combiner, it'll 
+have to only merge them in time $\Theta(d)$ and since $d \in \mathcal{O}(k\cdot 
+d)$ we can omit the term; finally all Hadoop's nodes stream 
+their Combiners' results to $k$ Reducers. Those operations have a complexity of:
+
+\begin{equation}
+T_\textsc{Kmeans} \in \mathcal{O} \left(
+	\dfrac{n}{N}\cdot k \cdot d \; \;+\; \;
+	k \cdot \left(N \cdot d\right)
+\right)
+\simeq
+\mathcal{O} \left(
+	\dfrac{n}{N}\cdot k \cdot d
+\right)
+\end{equation}
+
+and 
+
+\[
+S_\textsc{Kmeans} \in \Theta \left(k + d\right)
+\]
+
+\paragraph{I/O complexity}
+In principle, if no combiner is used, the number of bytes $O_\textsc{Kmeans}$ 
+to be 
+transmitted over the network would be of class $\Theta(n \cdot d)$, since the 
+mappers would transmit all of their data tuples to the Reducers; however, if 
+the combiner is added to the job, we can reduce greatly this figure, saving a 
+lot of I/O over the network:
+
+\[
+O_\textsc{Kmeans} \in \mathcal{O} \left(N \cdot k \cdot d\right)
+\]
 
 \section{Implementation}
 
@@ -443,20 +513,25 @@ p = (p_1, \dots, p_d)
 It provides the following functionalities:
 
 \begin{itemize}
-	\item Setting the components of a point, performing mathematical operations 
-	(addition, subtraction, scalar multiplication), calculating distance, and 
-	converting to/from string representation
+	\item Computation of the norm
+	
+	\item Computation of sum between two points and scalar product with a number
+	
+	\item toString function
 	
 	\item Implementation of the \texttt{Writable} interface to support 
 	serialization and de-serialization
 	
 \end{itemize}
 
+\subparagraph{I/O}
+It takes $(4 + 8d)$ bytes to serialize a \texttt{Point} object.
+
 \paragraph{\texttt{AverageBuilder} Class}
 It provides the following functionalities:
 
 \begin{itemize}
-	\item Storage of the sum of points and their cardinality (number of points).
+	\item Storage of the sum of points and their cardinality (number of points)
 	\item Methods to add points to the computation, either individually or by 
 	combining with another \texttt{AverageBuilder} object
 	\item Computation and retrieval of the average point
@@ -468,6 +543,25 @@ The \texttt{Point} class handles point-related operations in the Mapper and
 Reduce classes, while the \texttt{AverageBuilder} class facilitates efficient 
 computation of the average of multiple points used in the combiner and reducer.
 
+\subparagraph{I/O}
+It takes $(4 + 8d + 8)$ bytes to serialize an \texttt{AverageBuilder} object.
+
+\paragraph{Total I/O}
+If no combiner is employed, the application would have to transmit $(4 + 8d + 
+8) \cdot n$ bytes over the network, for example a dataset of $n = 4 \times 
+10^6$ samples with $d = 6$ features and $k=4$ would generate $240 \text{MB}$ 
+\footnote{Not MiB} of traffic; on the other hand, if the combiner is used, it 
+would have to 
+transmit $(4 + 8d + 8) \cdot N \cdot k$ bytes over the network, using the 
+same example and assuming $N=2$, it'd have to send just $480$ bytes, 
+shaving off \textbf{two orders of magnitude}!
+
+We can reduce even further those figures by refactoring the implementation a 
+little: it's possible to make the $d$ field from \texttt{Point} static --- 
+since it's a constant parameter of the algorithm --- saving $4$ bytes; and it's 
+possible to use a variable length serializer for the \texttt{cardinality} field 
+of \texttt{AverageBuilder} reducing its size to just a couple of bytes.
+
 \chapter{Results}
 
 \section{Synthetic data}
@@ -477,7 +571,7 @@ To test our program we had to generate synthetic data. We wrote a program that
 generates $k$ points $c_1, \dots, c_k$, the centroids, by drawing them from a 
 random variable 
 $C \in \left[-B,B\right]^d$ that has a continuous uniform distribution of 
-probability in its domain. 
+probability in its domain.
 
 \paragraph{Cluster's data}
 For each generated centroid $c_i$, we generate a \emph{Gaussian standard 
@@ -489,6 +583,9 @@ allows the program to generate ellipsoidal clusters. Finally, the program
 iterates through all centroids' random vectors $X_0, ..., X_k$ until it 
 generates $n$ points, those points are streamed to \texttt{stdout} and written 
 to a file.
+
+\paragraph{Noise}
+On top of the data we added some noise from a random uniform variable $N \in \left[-B - 	\epsilon, B + \epsilon\right]^d$.
 
 \paragraph{Comparisons}
 We had to run the program several times to generate different files with 
@@ -502,56 +599,140 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 
 \section{Benchmark}
 
-\begin{figure}[H]
+\begin{figure}[h]
 	\centering
-	\begin{tikzpicture}
+	%\begin{tikzpicture}
+	%	\begin{axis}[
+	%		xmode=log,
+	%		ymode=log,
+	%		ymin=300,
+	%		ymax=20000,
+	%		xlabel={$n$},
+	%		ylabel={$t [\text{s}]$}
+	%		]
+	%		\addplot table [x=size, y=avg, col sep=comma] {../bench/k3mean.csv};
+	%		\addplot +[mark=none] coordinates {(3500000, 300) (3500000, 20000)};
+	%	\end{axis}
+	%\end{tikzpicture}
+	\begin{subfigure}[b]{0.425\textwidth}
+		\centering
+		\begin{tikzpicture}
 		\begin{axis}[
-			xmode=log,
-			ymode=log,
-			ymin=300,
-			ymax=20000,
-			xlabel={$n$},
-			ylabel={$t [\text{s}]$}
+				ymin=20,
+				ymax=60,
+				xmode=log,
+				%ymode=log,
+				xlabel={$n$},
+				ylabel={$t [\text{s}]$},
+				legend style={at={(0.05,0.95)},anchor=north west}
 			]
-			\addplot table [x=size, y=avg, col sep=comma] {../bench/k3mean.csv};
-			\addplot +[mark=none] coordinates {(3500000, 300) (3500000, 20000)};
+			\addplot table [col sep=comma,x=size,y=time,]{../bench/data.3.4.csv}; 
+			\addlegendentry{$k = 4$}
+			\addplot table [col sep=comma,x=size,y=time,]{../bench/data.3.8.csv};
+			\addlegendentry{$k = 8$}
+			\addplot table [col sep=comma,x=size,y=time,]{../bench/data.3.16.csv};
+			\addlegendentry{$k = 16$}
+			
+			\addplot +[mark=none, color=red] coordinates {(4500000, 20) (4500000, 60)};
 		\end{axis}
-	\end{tikzpicture}
-	\begin{tikzpicture}
-	\begin{axis}[
-		xmode=log,
-		ymode=log,
-		%ymin=300,
-		%ymax=20000,
-		xlabel={$n$},
-		ylabel={$t [\text{s}]$}
-		]
-		\addplot table [x=size, y=time, col sep=comma] {../bench/k3d12bis.csv};
-		\addplot table [x=size, y=time, col sep=comma] {../bench/k3d12.min.csv};
-		%\addplot +[mark=none] coordinates {(3500000, 300) (3500000, 20000)};
-	\end{axis}
-\end{tikzpicture}
-	\caption{$k=3$, $d=6$, red line when $|F| \ge 128\text{MB}$}
+		\end{tikzpicture}
+		\caption{Execution times with $d = 3$}
+	\end{subfigure}
+	\hfill
+		\begin{subfigure}[b]{0.425\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\begin{axis}[
+				ymin=20,
+				ymax=55,
+				xmode=log,
+				%ymode=log,
+				xlabel={$n$},
+				ylabel={$t [\text{s}]$},
+				legend style={at={(0.05,0.95)},anchor=north west}
+				]
+				\addplot table [col sep=comma,x=size,y=time,]{../bench/data.6.4.csv}; 
+				\addlegendentry{$k = 4$}
+				\addplot table [col sep=comma,x=size,y=time,]{../bench/data.6.8.csv};
+				\addlegendentry{$k = 8$}
+				\addplot table [col sep=comma,x=size,y=time,]{../bench/data.6.16.csv};
+				\addlegendentry{$k = 16$}
+				
+				\addplot +[mark=none, color=red] coordinates {(2500000, 20) (2500000, 55)};
+			\end{axis}
+		\end{tikzpicture}
+		\caption{Execution times with $d = 6$}
+	\end{subfigure}
+	\vskip\baselineskip
+	\begin{subfigure}[b]{0.425\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\begin{axis}[
+				ymin=20,
+				ymax=55,
+				xmode=log,
+				%ymode=log,
+				xlabel={$n$},
+				ylabel={$t [\text{s}]$},
+				legend style={at={(0.05,0.95)},anchor=north west}
+				]
+				\addplot table [col sep=comma,x=size,y=time,]{../bench/data.12.4.csv}; 
+				\addlegendentry{$k = 4$}
+				\addplot table [col sep=comma,x=size,y=time,]{../bench/data.12.8.csv};
+				\addlegendentry{$k = 8$}
+				\addplot table [col sep=comma,x=size,y=time,]{../bench/data.12.16.csv};
+				\addlegendentry{$k = 16$}
+				
+				
+				\addplot +[mark=none, color=red] coordinates {(1500000, 20) (1500000, 55)};
+			\end{axis}
+		\end{tikzpicture}
+		\caption{Execution times with $d = 12$}
+	\end{subfigure}
+	\hfill
+		\begin{subfigure}[b]{0.425\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\begin{axis}[,
+				xlabel={$k$},
+				ylabel={$t [\text{s}]$},
+				legend style={at={(0.05,0.95)},anchor=north west}
+				]
+				\addplot table [col sep=comma,x=k,y=time,]{../bench/data.vark.3.csv}; 
+				\addlegendentry{$d = 3$}
+				\addplot table [col sep=comma,x=k,y=time,]{../bench/data.vark.6.csv};
+				\addlegendentry{$d = 6$}
+				\addplot table [col sep=comma,x=k,y=time,]{../bench/data.vark.12.csv};
+				\addlegendentry{$d = 12$}
+			\end{axis}
+		\end{tikzpicture}
+		\caption{Execution times with $d = 12$}
+	\end{subfigure}
+	\caption{Execution time of a single iteration of K-means. Right of red line $|F| > 128$ MiB}
 \end{figure}
 
+\paragraph{Methodology}
+We ran our application of a synthetic datasets of various combinations of $n, d, k$, we used a Bash script to log information about each execution's exit code, execution time, number of iterations and total time to run all iterations' jobs; this procedure was done a couple of times for each dataset. Finally, we computed the average time to execute a K-means iteration for each execution and the average for all runs of the same dataset $(n,k,d)$.
+
 \paragraph{Results}
-We observe, as expected, a linear growth of the execution time with respect to 
-$n$; but only after the file's size exceeds the chunk limit of $128\text{MB}$, 
-with $d = 6$ it's when $n > 3 \times 10^6$
-\footnote{
-	Note that we're using 
-	logarithmic scales, so a linear relation will 
-	be represented as a line of slope $1$ and offset $log_{10}(m)$, where $m$ 
-	is the slope of the linear relation.
-}
+%We observe, as expected, a linear growth of the execution time with respect to 
+%$n$; but only after the file's size exceeds the chunk limit of $128\text{MB}$, 
+%with $d = 6$ it's when $n > 3 \times 10^6$
+%\footnote{
+%	Note that we're using 
+%	logarithmic scales, so a linear relation will 
+%	be represented as a line of slope $1$ and offset $log_{10}(m)$, where $m$ 
+%	is the slope of the linear relation.
+%}
+We can observe that the, after a certain $\bar{n}$, all execution times start to show a linear dependency in $n$; a similar observation holds through with $k$, however --- strangely enough --- we observe that when $d$ is increased, the execution time slight drops with respect to $k$, this might be due to CPUs' pipelining capabilities, since most of the $d$-dependent operations occur in loops of such length.
 
 \paragraph{Considerations}
-We see that the MapReduce framework begins to make sense when we work with large amount of data that can be split over multiple computing nodes, otherwise the system's overhead is so large that the execution time seems to remain constant for smaller datasets. Of course, we benchmarked a system made only of three servers and \textbf{very} limited resources, in a real scenario with more powerful machines the execution time should be much better.
+We see that the MapReduce framework begins to make sense when we work with large amount of data that can be split over multiple computing nodes; otherwise the system's overhead is so large that the execution time remains --- in our experiments --- constant for smaller datasets. Of course, we benchmarked a system made only of three servers and \textbf{very} limited resources, in a real scenario with more powerful machines the execution time may be better.
 
 \paragraph{Improvements}
-Finally, we have to state that it might be possible to improve the procedure's speed by replacing the double precision floating point numbers with just single precision ones or even, with appropriate considerations, with integers as the \textit{ALU} is orders of magnitude faster than the \textit{FPU}; however the latter solution is difficult to implement as we'd have to scale properly the values and we'd have to compute roots of numbers.
+Finally, we have to state that it might be possible to improve the procedure's speed by replacing the double precision floating point numbers with just single precision ones or even, with appropriate considerations, with integers as the \textit{ALU} is orders of magnitude faster than the \textit{FPU}; however the latter solution is difficult to implement as we'd have to properly scale values and we'd have to compute roots of integral numbers.
 
-\section{Comparison}
+%\section{Comparison}
 
 
 \end{document}          
