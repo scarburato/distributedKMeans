@@ -49,7 +49,7 @@ public class KMeansMapReduce {
     /**
      * Reads the centroids from file
      */
-    private static Point[] readCentroids(Configuration conf, int k, String pathString)
+    public static Point[] readCentroids(Configuration conf, int k, String pathString)
             throws IOException, FileNotFoundException {
         FileSystem hdfs = FileSystem.get(conf);
         FileStatus[] nodes = hdfs.listStatus(new Path(pathString), new GlobFilter("part-r-*"));
