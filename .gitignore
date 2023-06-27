@@ -47,6 +47,7 @@ test_out_sample
 randomGen/a.out
 randomGen/test
 randomGen/test.csv
+randomGen/test.*
 
 #ScHiFoTeX
 report/*.aux

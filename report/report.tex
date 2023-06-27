@@ -213,30 +213,30 @@ the problem.
 \label{avgBuild}
 
 Let us define an \textbf{AverageBuilder} as a tuple that contains information 
-necessary to compute an average:
+necessary to compute an average over a set of points ${p_1, \dots, p_s}$:
 
 \begin{align}
 	\label{def:avgBuild}
-& B = \left\langle \sum_{i = 1}^{k} p_i, k\right\rangle =
-\left\langle \Sigma, k\right\rangle
+& B = \left\langle \sum_{i = 1}^{s} p_i, k\right\rangle =
+\left\langle \Sigma, s\right\rangle
 &
-p_i \in \mathbb{R}^d \land k \in \mathbb{N}
+p_i \in \mathbb{R}^d \land s \in \mathbb{N}
 \end{align}
 
 in this way we can define a function to compute the average:
 
 \begin{equation}
 \label{computeAvg}
-\text{\textsc{ComputeAverage}}(B) = \dfrac{\Sigma}{k}
-= \dfrac{1}{k}\cdot\sum_{i = 1}^{k} p_i
+\text{\textsc{ComputeAverage}}(B) = \dfrac{\Sigma}{s}
+= \dfrac{1}{s}\cdot\sum_{i = 1}^{s} p_i
 \end{equation}
 
 and another to merge two objects:
 
 \begin{equation}
 \label{mergeAvg}
-\text{\textsc{MergeAverage}}(B_a, B_b) =
-\left\langle \Sigma_a + \Sigma_b, k_a + k_b\right\rangle
+\text{\textsc{MergeBuilder}}(B_a, B_b) =
+\left\langle \Sigma_a + \Sigma_b, s_a + s_b\right\rangle
 \end{equation}
 
 the latter will be useful to gradually \textit{build} an average from a stream 
@@ -327,7 +327,7 @@ The \textbf{KMeansReducer} algorithm takes two parameters as input:
 
 \paragraph{Output}
 
-The Combiner's output is the same as the mapper's. The Combiner's output is a 
+The Combiner's output is the same as the mapper's. The Reducer's output is a 
 tuple $\left\langle k, {c'}_k \right\rangle$, the second component represents 
 the new cluster's centroid for the next iteration of \emph{K-mean}, if the exit 
 condition is not met.
@@ -373,7 +373,7 @@ T_\textsc{Combiner} \in \mathcal{O}\left(\dfrac{n}{N} \cdot d\right)
 S_\textsc{Combiner} \in \Theta(d)
 \]
 
-The same figure in space complexity applies to the Combiner; while the 
+The same figure in space complexity applies to the Reducer; while the 
 Reducer's time complexity is:
 
 \[
@@ -389,7 +389,7 @@ Combiner tasks for a certain cluster $c_i$ and as the
 	\caption{KMeans' iteration for MapReduce}
 	\label{algo:kmeans-reducer}
 	\begin{algorithmic}[1]
-		\Require $B = \left\langle \Sigma, k\right\rangle$ to be an 
+		\Require $B = \left\langle \Sigma, s\right\rangle$ to be an 
 		\textsc{AverageBuilder}, as described in Section \ref{avgBuild}
 		
 		\Require $k \in \mathbb{N}^+$ to be the number of clusters to generate
@@ -398,20 +398,20 @@ Combiner tasks for a certain cluster $c_i$ and as the
 		
 		\Procedure{ComputeAverage}{$B$} \Comment{The same as Equation 
 			\ref{computeAvg}}
-		\State \Return $\dfrac{1}{k}\sum_{i = 1}^{k} p_i$
+		\State \Return $\dfrac{1}{s}\sum_{i = 1}^{s} p_i$
 		\EndProcedure
 		
 		\vspace{.25cm}
 		
-		\Procedure{MergeAverage}{$B_a$, $B_b$} \Comment{The same as Equation
+		\Procedure{MergeBuilder}{$B_a$, $B_b$} \Comment{The same as Equation
 			\ref{mergeAvg}}
-		\State \Return $\left\langle \Sigma_a + \Sigma_b, k_a + 
-		k_b\right\rangle$
+		\State \Return $\left\langle \Sigma_a + \Sigma_b, s_a + 
+		s_b\right\rangle$
 		\EndProcedure
 		
 		\vspace{.25cm}
 		
-		\Procedure{Mapper}{$k$, $p$, $C$}
+		\Procedure{Mapper}{offset, $p$, $C$}
 		%\State minDistance $\gets +\infty$
 		%\State closestCentroid $\gets -1$
 		%\ForAll{$c_i \in C$}
@@ -435,12 +435,12 @@ Combiner tasks for a certain cluster $c_i$ and as the
 		
 		\vspace{.25cm}
 		
-		\Procedure{Combiner}{$k$, $S$}
+		\Procedure{Combiner}{centroid's index, $S$}
 		\State $B \gets \left\langle 0,0 \right\rangle$
 		\Comment {Empty average builder}
 		
 		\ForAll{$B' \in S$}
-		\State $B \gets \Call{MergeAverage}{B, B'}$
+		\State $B \gets \Call{MergeBuilder}{B, B'}$
 		\EndFor
 		
 		\State \Return $\left\langle k, B\right\rangle$
@@ -449,8 +449,8 @@ Combiner tasks for a certain cluster $c_i$ and as the
 		
 		\vspace{.25cm}
 		
-		\Procedure{Reducer}{$k$, $S$}
-		\State $B \gets \Call{Combiner}{k,S}$
+		\Procedure{Reducer}{centroid's index, $S$}
+		\State $B \gets \Call{Combiner}{\text{centroid's index},S}$
 		\Comment{To merge the builders we re-use the combiner}
 		\State \Return \Call{ComputeAverage}{B}
 		\Comment{New cluster's centroid}
@@ -461,7 +461,7 @@ Combiner tasks for a certain cluster $c_i$ and as the
 \subsection{General complexity of a single iteration}
 
 \paragraph{}
-Hadoop splits the $n$ tuples over $N$ tasks; for each tuple, each node has to 
+Hadoop splits the $n$ tuples over multiple tasks on $N$ cluster's nodes; for each tuple, each node has to 
 perform a call to the Mapper and each Mapper's result is streamed to the 
 Combiner, notice that since the results are streamed to the combiner, it'll 
 have to only merge them in time $\Theta(d)$ and since $d \in \mathcal{O}(k\cdot 
@@ -469,6 +469,7 @@ d)$ we can omit the term; finally all Hadoop's nodes stream
 their Combiners' results to $k$ Reducers. Those operations have a complexity of:
 
 \begin{equation}
+\label{eq:it-t-complexity}
 T_\textsc{Kmeans} \in \mathcal{O} \left(
 	\dfrac{n}{N}\cdot k \cdot d \; \;+\; \;
 	k \cdot \left(N \cdot d\right)
@@ -644,7 +645,7 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 		\begin{tikzpicture}
 			\begin{axis}[
 				ymin=20,
-				ymax=55,
+				ymax=60,
 				xmode=log,
 				%ymode=log,
 				xlabel={$n$},
@@ -658,7 +659,7 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 				\addplot table [col sep=comma,x=size,y=time,]{../bench/data.6.16.csv};
 				\addlegendentry{$k = 16$}
 				
-				\addplot +[mark=none, color=red] coordinates {(2500000, 20) (2500000, 55)};
+				\addplot +[mark=none, color=red] coordinates {(2500000, 20) (2500000, 60)};
 			\end{axis}
 		\end{tikzpicture}
 		\caption{Execution times with $d = 6$}
@@ -669,7 +670,7 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 		\begin{tikzpicture}
 			\begin{axis}[
 				ymin=20,
-				ymax=55,
+				ymax=70,
 				xmode=log,
 				%ymode=log,
 				xlabel={$n$},
@@ -684,7 +685,7 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 				\addlegendentry{$k = 16$}
 				
 				
-				\addplot +[mark=none, color=red] coordinates {(1500000, 20) (1500000, 55)};
+				\addplot +[mark=none, color=red] coordinates {(1500000, 20) (1500000, 70)};
 			\end{axis}
 		\end{tikzpicture}
 		\caption{Execution times with $d = 12$}
@@ -706,13 +707,13 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 				\addlegendentry{$d = 12$}
 			\end{axis}
 		\end{tikzpicture}
-		\caption{Execution times with $d = 12$}
+		\caption{Execution times with $n = 4 \times 10^6$}
 	\end{subfigure}
 	\caption{Execution time of a single iteration of K-means. Right of red line $|F| > 128$ MiB}
 \end{figure}
 
 \paragraph{Methodology}
-We ran our application of a synthetic datasets of various combinations of $n, d, k$, we used a Bash script to log information about each execution's exit code, execution time, number of iterations and total time to run all iterations' jobs; this procedure was done a couple of times for each dataset. Finally, we computed the average time to execute a K-means iteration for each execution and the average for all runs of the same dataset $(n,k,d)$.
+We ran our application on synthetic datasets of various combinations of $n, d, k$, we used a Bash script to log information about each execution's exit code, execution time, number of iterations and total time to run all iterations' jobs; this procedure was done a couple of times for each dataset. Finally, we computed the average time to execute a K-means iteration for each execution and the average for all runs of the same dataset $(n,k,d)$.
 
 \paragraph{Results}
 %We observe, as expected, a linear growth of the execution time with respect to 
@@ -724,7 +725,13 @@ We ran our application of a synthetic datasets of various combinations of $n, d,
 %	be represented as a line of slope $1$ and offset $log_{10}(m)$, where $m$ 
 %	is the slope of the linear relation.
 %}
-We can observe that the, after a certain $\bar{n}$, all execution times start to show a linear dependency in $n$; a similar observation holds through with $k$, however --- strangely enough --- we observe that when $d$ is increased, the execution time slight drops with respect to $k$, this might be due to CPUs' pipelining capabilities, since most of the $d$-dependent operations occur in loops of such length.
+We can observe that, after a certain $\bar{n}$, all execution times start to show a linear dependency in $n$; a similar observation holds true with $k$, however --- strangely enough --- we observe that when $d$ is increased, the execution time slightly drops with respect to $k$, this might be due to CPUs' pipelining capabilities, since most of the $d$-dependent operations occur in loops of such length.
+
+\paragraph{Execution time}
+We can observe that, independently from the dataset's dimension $n$ and dimensionality $d$, it takes a certain time to bootstrap the Hadoop job; in particular we have to read and write $k$ centroids to HDFS. We've observed that such time is $1.25k + 20$ seconds, if we remove such time from our figures, we see that application's complexity (Equation \ref{eq:it-t-complexity}) holds true for $n > 10^6$ with a constant factor of circa $100 \times 10^{-9}$ seconds.
+
+\paragraph{Parallelism}
+Notice how there's a drop in time when the file's size passes $128$ MiB --- that's when $n$ passes the red line --- that's because its contents are spanning over two HDFS's chunks, so Hadoop is very likely to spawn two tasks and assign one chunk to each; in spite of this parallelism, we're not able to observe a halving of in execution time.
 
 \paragraph{Considerations}
 We see that the MapReduce framework begins to make sense when we work with large amount of data that can be split over multiple computing nodes; otherwise the system's overhead is so large that the execution time remains --- in our experiments --- constant for smaller datasets. Of course, we benchmarked a system made only of three servers and \textbf{very} limited resources, in a real scenario with more powerful machines the execution time may be better.
@@ -732,7 +739,36 @@ We see that the MapReduce framework begins to make sense when we work with large
 \paragraph{Improvements}
 Finally, we have to state that it might be possible to improve the procedure's speed by replacing the double precision floating point numbers with just single precision ones or even, with appropriate considerations, with integers as the \textit{ALU} is orders of magnitude faster than the \textit{FPU}; however the latter solution is difficult to implement as we'd have to properly scale values and we'd have to compute roots of integral numbers.
 
-%\section{Comparison}
+\section{Comparison}
 
+\paragraph{Initial centroids}
+We used Skitlearn's \emph{k-means++} procedure to select good initial centroids, then we used them in both Skitlearn's k-means and ours.
+
+\paragraph{Results}
+We obtained similar results in most cases, an example is shown in Figure \ref{fig:clusters}; however is some cases we obtained different results, for instance, in a dataset in which two cluster were close together, Skitlearn's implementation was able to properly separate them, while ours was not.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}
+		\begin{axis}[width=.98\linewidth,]
+			\addplot [only marks, color=purple, mark size=0.7pt] table [only marks, col sep=comma] {ex2/test.0.csv};
+			\addplot [only marks, color=cyan, mark size=0.7pt] table [only marks, col sep=comma] {ex2/test.1.csv};
+			\addplot [only marks, color=teal, mark size=0.7pt] table [only marks, col sep=comma] {ex2/test.2.csv};
+			\addplot [only marks, color=red, mark size=0.7pt] table [only marks, col sep=comma] {ex2/test.3.csv};
+			\addplot [only marks, color=lime, mark size=0.7pt] table [only marks, col sep=comma] {ex2/test.4.csv};
+			\addplot [mark=+, mark options={fill=green}, mark size=1.5pt] table [only marks, col sep=comma] {ex2/test.N.csv};			
+			
+			
+			\addplot[only marks, mark=*, mark options={fill=green}, mark size=4pt] table [only marks, col sep=comma] {ex2/hadoop.csv};
+			
+			\addplot [only marks, mark=*, mark options={fill=orange}, mark size=4pt] table [only marks, col sep=comma] {ex2/python.csv};
+			
+			\legend{,,,,,noise,Our implementation,Skitlearn's implementation};
+		\end{axis}
+	\end{tikzpicture}
+	
+	\caption{Comparison between two K-means implementations}
+	\label{fig:clusters}
+\end{figure}
 
 \end{document}          
