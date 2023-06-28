@@ -81,7 +81,7 @@ public class KMeansMapReduce {
             cmd = parser.parse(options, args);
         } catch (ParseException e) {
             System.out.println(e.getMessage());
-            formatter.printHelp("-i INPUT -o OUTPUT -d DIMENSIONALITY [-t THRESHOLD]", options);
+            formatter.printHelp(KMeansOptions.cmdstring, options);
             System.exit(1);
             return;
         }

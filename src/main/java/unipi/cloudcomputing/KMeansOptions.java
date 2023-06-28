@@ -7,6 +7,11 @@ import org.apache.commons.cli.Options;
  * Just command line options manager from Apache
  */
 public class KMeansOptions extends Options {
+    public static final String cmdstring = "-i INPUT -o OUTPUT -d DIMENSIONALITY" +
+                                           "[-t THRESHOLD] [-k CLUSTERS] [-e THRESHOLD]" +
+                                           "[-I MAX_ITERATIONS]" +
+                                           "[-c centroid1;[centroid2...]]" ;
+
     public KMeansOptions() {
         Option input = new Option("i", "input", true, "Input file from HadoopFS");
         input.setRequired(true);
