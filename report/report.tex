@@ -217,7 +217,7 @@ necessary to compute an average over a set of points ${p_1, \dots, p_s}$:
 
 \begin{align}
 	\label{def:avgBuild}
-& B = \left\langle \sum_{i = 1}^{s} p_i, k\right\rangle =
+& B = \left\langle \sum_{i = 1}^{s} p_i, s\right\rangle =
 \left\langle \Sigma, s\right\rangle
 &
 p_i \in \mathbb{R}^d \land s \in \mathbb{N}
@@ -620,7 +620,7 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 		\begin{tikzpicture}
 		\begin{axis}[
 				ymin=20,
-				ymax=60,
+				ymax=70,
 				xmode=log,
 				%ymode=log,
 				xlabel={$n$},
@@ -634,7 +634,7 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 			\addplot table [col sep=comma,x=size,y=time,]{../bench/data.3.16.csv};
 			\addlegendentry{$k = 16$}
 			
-			\addplot +[mark=none, color=red] coordinates {(4500000, 20) (4500000, 60)};
+			\addplot +[mark=none, color=red] coordinates {(4500000, 20) (4500000, 70)};
 		\end{axis}
 		\end{tikzpicture}
 		\caption{Execution times with $d = 3$}
@@ -645,7 +645,7 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 		\begin{tikzpicture}
 			\begin{axis}[
 				ymin=20,
-				ymax=60,
+				ymax=70,
 				xmode=log,
 				%ymode=log,
 				xlabel={$n$},
@@ -659,7 +659,7 @@ We can see an example of synthetic clusters in Figure \ref{fig:cluster-example}
 				\addplot table [col sep=comma,x=size,y=time,]{../bench/data.6.16.csv};
 				\addlegendentry{$k = 16$}
 				
-				\addplot +[mark=none, color=red] coordinates {(2500000, 20) (2500000, 60)};
+				\addplot +[mark=none, color=red] coordinates {(2500000, 20) (2500000, 70)};
 			\end{axis}
 		\end{tikzpicture}
 		\caption{Execution times with $d = 6$}
